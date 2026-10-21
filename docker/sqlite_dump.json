@@ -1,0 +1,234 @@
+[
+{
+  "model": "accounts.account",
+  "pk": 1,
+  "fields": {
+    "account": "3234543",
+    "bank_name": "ТБанк",
+    "bank_identity_number": "131312"
+  }
+},
+{
+  "model": "customers.customer",
+  "pk": 1,
+  "fields": {
+    "name": "ПАО СБРФ"
+  }
+},
+{
+  "model": "departments.department",
+  "pk": 1,
+  "fields": {
+    "name": "Бухгалтерский"
+  }
+},
+{
+  "model": "employees.employee",
+  "pk": 1,
+  "fields": {
+    "last_name": "Ременьков",
+    "first_name": "Артем",
+    "middle_name": "Равилевич",
+    "post": "Менеджер",
+    "passport_series": "1231",
+    "passport_number": "12345",
+    "passport_issued_by": "РФ",
+    "passport_date_of_issue": "2025-06-15"
+  }
+},
+{
+  "model": "employees.employee",
+  "pk": 2,
+  "fields": {
+    "last_name": "Таранько",
+    "first_name": "Самуил",
+    "middle_name": "Петрович",
+    "post": "Менеджер",
+    "passport_series": "1222",
+    "passport_number": "122222",
+    "passport_issued_by": "Мной же",
+    "passport_date_of_issue": "2010-03-23"
+  }
+},
+{
+  "model": "organizations.organization",
+  "pk": 1,
+  "fields": {
+    "name": "ООО РосГра",
+    "address": "ул. Садовая 152",
+    "account": 1,
+    "chief": "Дубровин Владимир Антонович",
+    "financial_chief": "Гарькуша Ангелина Дмитриевна"
+  }
+},
+{
+  "model": "positions.position",
+  "pk": 1,
+  "fields": {
+    "name": "Директор"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 3,
+  "fields": {
+    "name": "Василёк",
+    "price": "12.00",
+    "unit": 2
+  }
+},
+{
+  "model": "products.product",
+  "pk": 4,
+  "fields": {
+    "name": "старый башмак",
+    "price": "12.00",
+    "unit": 2
+  }
+},
+{
+  "model": "units.unit",
+  "pk": 1,
+  "fields": {
+    "name": "кг"
+  }
+},
+{
+  "model": "units.unit",
+  "pk": 2,
+  "fields": {
+    "name": "супер грамм"
+  }
+},
+{
+  "model": "proxies.proxy",
+  "pk": 4,
+  "fields": {
+    "organization": 1,
+    "employee": 1,
+    "customer": 1,
+    "date_of_issue": "2025-10-17",
+    "is_valid_until": "2025-10-17"
+  }
+},
+{
+  "model": "proxies.proxyitem",
+  "pk": 16,
+  "fields": {
+    "proxy": 4,
+    "product": 3,
+    "amount": 112
+  }
+},
+{
+  "model": "proxies.proxyitem",
+  "pk": 17,
+  "fields": {
+    "proxy": 4,
+    "product": 4,
+    "amount": 11
+  }
+},
+{
+  "model": "brigadiers.brigadier",
+  "pk": 2,
+  "fields": {
+    "last_name": "Володин",
+    "first_name": "Даниил",
+    "middle_name": "Николаевич",
+    "pos": 1,
+    "passport_series": "1222",
+    "passport_number": "122222",
+    "passport_issued_by": "Мной же",
+    "passport_date_of_issue": "2025-10-11"
+  }
+},
+{
+  "model": "nariad.nariad",
+  "pk": 2,
+  "fields": {
+    "organization": 1,
+    "brigadier": 2,
+    "responsible": 1,
+    "issued_man": 1,
+    "received": 1,
+    "rationer": 1,
+    "date_of_issue": "2025-10-17",
+    "evaluation": "qweqw"
+  }
+},
+{
+  "model": "nariad.nariad",
+  "pk": 3,
+  "fields": {
+    "organization": 1,
+    "brigadier": 2,
+    "responsible": 1,
+    "issued_man": 2,
+    "received": 1,
+    "rationer": 2,
+    "date_of_issue": "2025-10-09",
+    "evaluation": "норма"
+  }
+},
+{
+  "model": "nariad.nariaditem",
+  "pk": 3,
+  "fields": {
+    "nariad": 2,
+    "date": "2025-10-30",
+    "describer": "qwe",
+    "category": "2",
+    "unit_time": 22.0,
+    "end_time": 2.0,
+    "amount": 2,
+    "price": 22,
+    "fulfil_time": 22,
+    "fulfil_day": 22
+  }
+},
+{
+  "model": "nariad.nariaditem",
+  "pk": 4,
+  "fields": {
+    "nariad": 3,
+    "date": "2025-10-18",
+    "describer": "12",
+    "category": "12",
+    "unit_time": 2.0,
+    "end_time": 2.0,
+    "amount": 2,
+    "price": 2,
+    "fulfil_time": 2,
+    "fulfil_day": 2
+  }
+},
+{
+  "model": "nariad.nariaditemfis",
+  "pk": 1,
+  "fields": {
+    "nariad": 3,
+    "fio": 1,
+    "category": "2",
+    "razriad": "2",
+    "tabel_num": 22,
+    "worked_hour": 2,
+    "worked_day": 2,
+    "summa": 10000
+  }
+},
+{
+  "model": "nariad.nariaditemfis",
+  "pk": 2,
+  "fields": {
+    "nariad": 2,
+    "fio": 1,
+    "category": "2",
+    "razriad": "2",
+    "tabel_num": 2,
+    "worked_hour": 12,
+    "worked_day": 2,
+    "summa": 2
+  }
+}
+]
