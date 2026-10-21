@@ -9,6 +9,9 @@
 #   --db-port N      внешний порт PostgreSQL (DB_PORT)
 #   --load-data      загрузить в БД данные из docker/sqlite_dump.json (первый запуск)
 #
+# Перед запуском проверяется, что порты на сервере свободны; если нет — деплой
+# останавливается и показывает, какой порт занят.
+#
 # Переменные окружения:
 #   SSH_PORT=2222    нестандартный порт SSH
 #   SSH_OPTS="-i ~/.ssh/key"  дополнительные опции ssh
@@ -17,7 +20,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-usage() { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
 TARGET=""
 DIR=crm
@@ -68,6 +71,12 @@ set_env() {  # set_env KEY VALUE — заменить или добавить с
 }
 [ -n "$WEB_PORT" ] && set_env WEB_PORT "$WEB_PORT"
 [ -n "$DB_PORT" ] && set_env DB_PORT "$DB_PORT"
+
+echo "==> Проверяю, свободны ли порты на сервере"
+if ! "${SSH[@]}" "cd '$DIR' && bash deploy/ports.sh"; then
+  echo "Деплой остановлен. Укажите выделенные вам порты: --port N / --db-port N (или в .env.server)."
+  exit 1
+fi
 
 echo "==> Собираю и запускаю контейнеры"
 "${SSH[@]}" "cd '$DIR' && docker compose up -d --build --remove-orphans --wait"

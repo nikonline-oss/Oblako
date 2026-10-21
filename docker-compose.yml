@@ -1,4 +1,5 @@
-# Все порты и пароли — в .env (см. .env.example)
+# Все порты и пароли — в .env (см. .env.example).
+# Проверить, что порты на машине свободны: ./deploy/ports.sh
 services:
   db:
     image: postgres:17-alpine
@@ -6,8 +7,7 @@ services:
     env_file: .env
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # По умолчанию БД доступна только с самой машины (127.0.0.1).
-    # DB_BIND=0.0.0.0 откроет её наружу.
+    # По умолчанию БД доступна только с самой машины (DB_BIND=127.0.0.1)
     ports:
       - "${DB_BIND:-127.0.0.1}:${DB_PORT:-5432}:5432"
     networks:
@@ -26,16 +26,17 @@ services:
     environment:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
+      PORT: ${APP_PORT:-8000}
     ports:
-      - "${WEB_PORT:-8000}:8000"
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8000}:${APP_PORT:-8000}"
     depends_on:
       db:
         condition: service_healthy
     networks:
       - crm-net
-    # gunicorn слушает 8000 только после migrate/collectstatic — значит, контейнер готов
+    # gunicorn слушает порт только после migrate/collectstatic — значит, контейнер готов
     healthcheck:
-      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8000), 2)"]
+      test: ["CMD", "python", "-c", "import os, socket; socket.create_connection(('localhost', int(os.environ['PORT'])), 2)"]
       interval: 5s
       timeout: 3s
       retries: 30

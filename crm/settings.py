@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -33,6 +35,12 @@ ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').sp
 
 # Нужен, если сайт открывают по https или через прокси: http://1.2.3.4:8080,https://crm.example.com
 CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o]
+
+# Версия приложения — показывается на главной странице (/), удобно проверять передеплой
+APP_VERSION = '1.0'
+
+# За прокси (роутер Heroku, nginx) схема запроса приходит в X-Forwarded-Proto
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -94,8 +102,13 @@ WSGI_APPLICATION = 'crm.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 # По умолчанию — PostgreSQL (параметры из переменных окружения, см. .env.example).
+# DATABASE_URL (Heroku Postgres) имеет приоритет над POSTGRES_*.
 # DB_ENGINE=sqlite — старая SQLite-база, нужна только для переноса данных.
-if os.environ.get('DB_ENGINE', 'postgres') == 'sqlite':
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(conn_max_age=600, ssl_require=os.environ.get('DB_SSL', '1') == '1'),
+    }
+elif os.environ.get('DB_ENGINE', 'postgres') == 'sqlite':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
