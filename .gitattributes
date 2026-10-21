@@ -1,0 +1,2 @@
+# Shell-скрипты всегда с LF, иначе bash/sh в контейнере падают на CRLF
+*.sh text eol=lf
