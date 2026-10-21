@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Журнал действий{% endblock %}
+{% block content %}
+<h4>Журнал действий</h4>
+{% include 'activity_log/_nav.html' %}
+
+<form method="get" class="card-panel white">
+  <div class="row" style="margin-bottom:0;">
+    <div class="col s12 m4">
+      <label>Поиск (по объекту, разделу и значениям полей)</label>
+      <input type="text" name="q" value="{{ f.q }}" placeholder="например: Иванов">
+    </div>
+    <div class="col s12 m3">
+      <label>Раздел</label>
+      <select name="model" class="browser-default">
+        <option value="">Все</option>
+        {% for m in models %}<option value="{{ m.label }}" {% if f.model == m.label %}selected{% endif %}>{{ m.verbose }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col s12 m2">
+      <label>Действие</label>
+      <select name="action" class="browser-default">
+        <option value="">Все</option>
+        {% for key, label in actions.items %}<option value="{{ key }}" {% if f.action == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col s6 m1"><label>ID объекта</label><input type="text" name="object_id" value="{{ f.object_id }}"></div>
+    <div class="col s6 m2" style="padding-top:20px;">
+      <button class="btn blue" type="submit"><i class="material-icons">search</i></button>
+      <a href="{% url 'activity_log:journal' %}" class="btn-flat">Сброс</a>
+    </div>
+  </div>
+  <div class="row" style="margin-bottom:0;">
+    <div class="col s6 m2"><label>С даты</label><input type="date" name="from" value="{{ f.from }}"></div>
+    <div class="col s6 m2"><label>По дату</label><input type="date" name="to" value="{{ f.to }}"></div>
+    <div class="col s12 m8" style="padding-top:24px;">
+      <small class="grey-text">Запрос к MongoDB: <code>db.activity.find({{ query_json }}).sort({timestamp: -1})</code></small>
+    </div>
+  </div>
+</form>
+
+<p>Найдено событий: <b>{{ total }}</b></p>
+<table class="highlight">
+  <thead><tr><th>Время</th><th>Действие</th><th>Раздел</th><th>Объект</th><th>Пользователь / IP</th><th></th></tr></thead>
+  <tbody>
+  {% for e in events %}
+    <tr>
+      <td>{{ e.timestamp|date:"d.m.Y H:i:s" }}</td>
+      <td>{% include 'activity_log/_badge.html' %}</td>
+      <td>{{ e.model_verbose }}</td>
+      <td>
+        <a href="?model={{ e.model }}&object_id={{ e.object_id }}" title="История этого объекта">{{ e.object_repr }}</a>
+        <small class="grey-text">#{{ e.object_id }}</small>
+        {% if e.changes %}<br><small class="grey-text">изменено: {{ e.changes|length }} пол{{ e.changes|length|pluralize:"е,я" }}</small>{% endif %}
+      </td>
+      <td>{{ e.user|default:"аноним" }}<br><small class="grey-text">{{ e.ip|default:"—" }}</small></td>
+      <td><a href="{% url 'activity_log:detail' e.id %}" class="btn-small blue"><i class="material-icons">visibility</i></a></td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="grey-text">Событий нет. Создайте, измените или удалите запись в любом разделе CRM — она появится здесь.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if prev_url or next_url %}
+<p class="center-align" style="margin-top:16px;">
+  {% if prev_url %}<a href="{{ prev_url }}" class="btn-flat"><i class="material-icons left">chevron_left</i>Новее</a>{% endif %}
+  Страница {{ page }}
+  {% if next_url %}<a href="{{ next_url }}" class="btn-flat">Старее<i class="material-icons right">chevron_right</i></a>{% endif %}
+</p>
+{% endif %}
+{% endblock %}

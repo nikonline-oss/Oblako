@@ -27,11 +27,15 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       PORT: ${APP_PORT:-8000}
+      MONGO_URI: mongodb://mongo:27017
     ports:
       - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8000}:${APP_PORT:-8000}"
     depends_on:
       db:
         condition: service_healthy
+      # Журнал не обязателен для работы CRM — ждём только запуска, не готовности
+      mongo:
+        condition: service_started
     networks:
       - crm-net
     # gunicorn слушает порт только после migrate/collectstatic — значит, контейнер готов
@@ -42,8 +46,24 @@ services:
       retries: 30
       start_period: 10s
 
+  # MongoDB для журнала действий (ЛР6). Порт наружу не публикуется — к ней ходит
+  # только web по сети crm-net. Консоль: docker compose exec mongo mongo crm
+  mongo:
+    image: mongo:4.4
+    restart: unless-stopped
+    volumes:
+      - mongodata:/data/db
+    networks:
+      - crm-net
+    healthcheck:
+      test: ["CMD", "mongo", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
 volumes:
   pgdata:
+  mongodata:
 
 networks:
   crm-net:

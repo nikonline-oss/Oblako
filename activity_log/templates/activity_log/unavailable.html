@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Журнал действий{% endblock %}
+{% block content %}
+<h4>Журнал действий</h4>
+{% if configured %}
+  <div class="card-panel red lighten-4 red-text text-darken-4">
+    MongoDB сейчас недоступна, журнал не может быть показан. CRM при этом работает как обычно.<br>
+    <small>{{ error }}</small>
+  </div>
+  <p>Проверьте контейнер: <code>docker compose ps mongo</code>, <code>docker compose logs mongo</code>.</p>
+{% else %}
+  <div class="card-panel orange lighten-4">
+    Журнал действий хранится в MongoDB, но подключение не настроено (переменная <code>MONGO_URI</code> пуста).
+  </div>
+  <ul class="browser-default">
+    <li>В Docker (<code>docker compose up</code>) MongoDB поднимается автоматически — <code>MONGO_URI=mongodb://mongo:27017</code>.</li>
+    <li>На Render и других PaaS можно взять бесплатный кластер MongoDB Atlas (M0) и задать его строку подключения в <code>MONGO_URI</code>.</li>
+  </ul>
+{% endif %}
+{% endblock %}

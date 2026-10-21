@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'brigadiers',
     'nariad',
     'cloud_storage',
+    'activity_log',
 ]
 
 MIDDLEWARE = [
@@ -73,6 +74,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'activity_log.middleware.CurrentRequestMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -126,6 +128,11 @@ else:
             'PORT': os.environ.get('POSTGRES_PORT', '5432'),
         }
     }
+
+
+# MongoDB для журнала действий (ЛР6). Пустой MONGO_URI — журнал выключен, CRM работает.
+MONGO_URI = os.environ.get('MONGO_URI', '')
+MONGO_DB = os.environ.get('MONGO_DB', 'crm')
 
 
 # Password validation

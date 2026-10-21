@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load activity_log %}
+{% block title %}Событие журнала{% endblock %}
+{% block content %}
+<h4>{{ e.action_label }}: {{ e.object_repr }}</h4>
+{% include 'activity_log/_nav.html' %}
+
+<div class="card"><div class="card-content">
+  <table>
+    <tr><th style="width:220px;">Время</th><td>{{ e.timestamp|date:"d.m.Y H:i:s" }}</td></tr>
+    <tr><th>Действие</th><td>{% include 'activity_log/_badge.html' %}</td></tr>
+    <tr><th>Раздел</th><td>{{ e.model_verbose }} <small class="grey-text">({{ e.model }})</small></td></tr>
+    <tr><th>Объект</th><td>{{ e.object_repr }} <small class="grey-text">#{{ e.object_id }}</small>
+      · <a href="{% url 'activity_log:journal' %}?model={{ e.model }}&object_id={{ e.object_id }}">вся история объекта</a></td></tr>
+    <tr><th>Пользователь</th><td>{{ e.user|default:"аноним" }}</td></tr>
+    <tr><th>IP / адрес запроса</th><td>{{ e.ip|default:"—" }} · {{ e.path|default:"—" }}</td></tr>
+  </table>
+</div></div>
+
+{% if e.changes %}
+<div class="card"><div class="card-content">
+  <span class="card-title">Что изменилось</span>
+  <table class="striped">
+    <thead><tr><th>Поле</th><th>Было</th><th>Стало</th></tr></thead>
+    <tbody>
+    {% for name, diff in e.changes.items %}
+      <tr><td>{{ name|field_label:e.model }}</td><td class="red-text text-darken-2">{{ diff.old|show_value }}</td><td class="green-text text-darken-2">{{ diff.new|show_value }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endif %}
+
+{% if e.data %}
+<div class="card"><div class="card-content">
+  <span class="card-title">{% if e.action == 'delete' %}Данные удалённого объекта{% else %}Данные объекта{% endif %}</span>
+  <table class="striped">
+    {% for name, value in e.data.items %}
+      <tr><th style="width:280px;">{{ name|field_label:e.model }}</th><td>{{ value|show_value }}</td></tr>
+    {% endfor %}
+  </table>
+</div></div>
+{% endif %}
+
+<div class="card"><div class="card-content">
+  <span class="card-title">Документ MongoDB</span>
+  <pre style="white-space:pre-wrap; background:#f5f5f5; padding:12px; overflow:auto;">{{ raw }}</pre>
+</div></div>
+{% endblock %}
