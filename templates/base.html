@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Система документов{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- Materialize CSS -->
+  <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet"> -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Статика -->
+  <link href="{% static 'css/materialize.min.css' %}" rel="stylesheet">
+  <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+</head>
+
+<body class="grey lighten-4 has-fixed-sidenav">
+  {% include 'includes/_sidenav.html' %}
+  {% include 'includes/_navbar.html' %}
+
+  <main class="section">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- Скрипты -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      M.AutoInit();
+    });
+  </script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация Materialize-элементов
+    M.AutoInit();
+    // Для селектов (если будут в других модулях)
+    var selects = document.querySelectorAll('select');
+    M.FormSelect.init(selects);
+  });
+</script>
+</body>
+</html>

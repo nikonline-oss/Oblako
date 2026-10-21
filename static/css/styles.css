@@ -1,0 +1,131 @@
+/* styles.css */
+
+/* Основные сбросы и настройки */
+body {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    background-color: #f5f5f5;
+}
+
+/* Главный контейнер контента */
+main {
+    flex: 1 0 auto;
+    margin-left: 300px; /* Основной отступ для контента */
+    padding: 20px;
+    width: calc(100% - 300px);
+    box-sizing: border-box;
+    transition: margin-left .3s;
+}
+
+/* Фиксированный сайдбар */
+.sidenav {
+    position: fixed;
+    width: 300px;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background-color: #fff;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    z-index: 999;
+    overflow-y: auto;
+    transform: translateX(0);
+    transition: transform .3s;
+}
+
+/* Навбар */
+nav.navbar {
+    position: fixed;
+    top: 0;
+    left: 300px;
+    right: 0;
+    height: 64px;
+    background-color: #2196f3;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: left .3s;
+}
+
+/* Контейнер контента внутри main */
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 80px auto 20px; /* Учитываем высоту навбара */
+    padding: 0 15px;
+    box-sizing: border-box;
+}
+
+/* Заголовок сайдбара */
+.sidenav .logo-container {
+    padding: 0 20px;
+    height: 64px;
+    line-height: 64px;
+    font-size: 24px;
+    border-bottom: 1px solid #eee;
+    background-color: #2196f3;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* Адаптив для мобильных */
+@media only screen and (max-width: 992px) {
+    main {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    .sidenav {
+        transform: translateX(-100%);
+    }
+    
+    nav.navbar {
+        left: 0;
+    }
+    
+    .sidenav.show {
+        transform: translateX(0);
+    }
+    
+    .container {
+        margin-top: 64px;
+    }
+}
+
+/* Дополнительные стили */
+.margin-right {
+    margin-right: 16px;
+}
+
+nav .nav-wrapper {
+    padding: 0 20px;
+}
+
+nav.navbar .brand-logo {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+nav ul li a {
+    color: white;
+}
+
+/* Стили для печати */
+@media print {
+    .print-only {
+        display: block;
+    }
+
+    .not-print {
+        display: none;
+    }
+
+    body, main {
+        margin-left: 0 !important;
+    }
+    
+    nav.navbar, .sidenav {
+        display: none !important;
+    }
+}

@@ -1,0 +1,45 @@
+<tr class="formset-row">
+  <td>
+    {{ form.date }}
+    {{ form.date.errors }}
+  </td>
+  <td>
+    {{ form.describer }}
+    {{ form.describer.errors }}
+  </td>
+  <td>
+    {{ form.сategory }}
+    {{ form.сategory.errors }}
+  </td>
+  <td>
+    {{ form.unit_time }}
+    {{ form.unit_time.errors }}
+  </td>
+  <td>
+    {{ form.end_time }}
+    {{ form.end_time.errors }}
+  </td>
+  <td>
+    {{ form.amount }}
+    {{ form.amount.errors }}
+  </td>
+  <td>
+    {{ form.price }}
+    {{ form.price.errors }}
+  </td>
+  <td>
+    {{ form.fulfil_time }}
+    {{ form.fulfil_time.errors }}
+  </td>
+  <td>
+    {{ form.fulfil_day }}
+    {{ form.fulfil_day.errors }}
+  </td>
+  <td class="not-print">
+    {{ form.DELETE }}
+    {{ form.id }}
+    <button type="button" class="btn red btn-small delete-row">
+      <i class="material-icons">delete</i>
+    </button>
+  </td>
+</tr>

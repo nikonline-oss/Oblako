@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Удалить бригадира{% endblock %}
+
+{% block content %}
+<h4>Удалить бригадира?</h4>
+<form method="post">
+  {% csrf_token %}
+  <p>Вы уверены, что хотите удалить бригадира {{ object.last_name }} {{ object.first_name }} {{ object.middle_name }}?</p>
+  <button class="btn red">Удалить</button>
+  <a href="{% url 'brigadier:list' %}" class="btn grey">Отмена</a>
+</form>
+{% endblock %}

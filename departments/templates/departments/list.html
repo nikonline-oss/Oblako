@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Отделы{% endblock %}
+
+{% block content %}
+<h4>Отделы</h4>
+<div class='right-align' style='margin-bottom: 20px;'>
+  <a href='{% url "departments:create" %}' class='btn blue'>
+    <i class='material-icons left'>add</i>Добавить
+  </a>
+</div>
+
+<table class='highlight'>
+  <thead>
+    <tr><th>ID</th><th>Название</th><th>Действия</th></tr>
+  </thead>
+  <tbody>
+    {% for department in departments %}
+    <tr>
+      <td>{{ department.id }}</td>
+      <td>{{ department.name }}</td>
+      <td>
+        <a href='{% url "departments:edit" department.pk %}' class='btn-small orange'>
+          <i class='material-icons'>edit</i>
+        </a>
+        <a href='{% url "departments:delete" department.pk %}' class='btn-small red' onclick='return confirm("Удалить?")'>
+          <i class='material-icons'>delete</i>
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

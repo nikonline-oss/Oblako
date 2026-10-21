@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Удалить должность{% endblock %}
+
+{% block content %}
+<h4>Удалить должность?</h4>
+<form method="post">
+  {% csrf_token %}
+  <p>Вы уверены, что хотите удалить "{{ object.name }}"?</p>
+  <button class="btn red">Удалить</button>
+  <a href="{% url 'positions:list' %}" class="btn grey">Отмена</a>
+</form>
+{% endblock %}

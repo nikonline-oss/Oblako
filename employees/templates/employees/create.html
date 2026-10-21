@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Добавить сотрудника{% endblock %}
+
+{% block content %}
+<h4>Добавить сотрудника</h4>
+<form method="post">
+  {% csrf_token %}
+  <div class="input-field">{{ form.last_name }}<label for="{{ form.last_name.id_for_label }}">Фамилия</label></div>
+  <div class="input-field">{{ form.first_name }}<label for="{{ form.first_name.id_for_label }}">Имя</label></div>
+  <div class="input-field">{{ form.middle_name }}<label for="{{ form.middle_name.id_for_label }}">Отчество</label></div>
+  <div class="input-field">{{ form.post }}<label for="{{ form.post.id_for_label }}">Должность</label></div>
+  <div class="input-field">{{ form.passport_series }}<label for="{{ form.passport_series.id_for_label }}">Серия паспорта</label></div>
+  <div class="input-field">{{ form.passport_number }}<label for="{{ form.passport_number.id_for_label }}">Номер паспорта</label></div>
+  <div class="input-field">{{ form.passport_issued_by }}<label for="{{ form.passport_issued_by.id_for_label }}">Кем выдан</label></div>
+  <div class="input-field">{{ form.passport_date_of_issue }}<label for="{{ form.passport_date_of_issue.id_for_label }}">Дата выдачи</label></div>
+  <button class="btn green">Добавить</button>
+</form>
+{% endblock %}

@@ -1,0 +1,496 @@
+{% extends 'base.html' %}
+{% block title %}Редактирование наряда #{{ form.instance.id }}{% endblock %}
+
+{% block content %}
+<div class="row valign-wrapper not-print">
+  <h4 class="col s10">Редактирование наряда #{{ form.instance.id }}</h4>
+  <div class="col s2 right-align">
+    <button class="btn-floating z-depth-0 waves-effect waves-light" onclick="printNariadForm()">
+      <i class="material-icons green">print</i>
+    </button>
+  </div>
+</div>
+
+<form method="post" id="nariad-form">
+  {% csrf_token %}
+  
+  <!-- Основные поля наряда -->
+  <div class="row">
+    <div class="input-field col s6">
+      {{ form.organization }}
+      <label class="active">Организация</label>
+      {{ form.organization.errors }}
+    </div>
+    <div class="input-field col s6">
+      {{ form.brigadier }}
+      <label class="active">Бригадир</label>
+      {{ form.brigadier.errors }}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="input-field col s4">
+      {{ form.responsible }}
+      <label class="active">Ответственный</label>
+      {{ form.responsible.errors }}
+    </div>
+    <div class="input-field col s4">
+      {{ form.issued_man }}
+      <label class="active">Задание выдал</label>
+      {{ form.issued_man.errors }}
+    </div>
+    <div class="input-field col s4">
+      {{ form.received }}
+      <label class="active">Задание принял</label>
+      {{ form.received.errors }}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="input-field col s6">
+      {{ form.rationer }}
+      <label class="active">Нормировщик</label>
+      {{ form.rationer.errors }}
+    </div>
+    <div class="input-field col s3">
+      {{ form.date_of_issue }}
+      <label class="active">Дата выдачи</label>
+      {{ form.date_of_issue.errors }}
+    </div>
+    <div class="input-field col s3">
+      {{ form.evaluation }}
+      <label class="active">Оценка качества</label>
+      {{ form.evaluation.errors }}
+    </div>
+  </div>
+
+  <!-- Табличная часть: Работы -->
+  <h5 class="not-print">Работы в наряде</h5>
+  {{ items_formset.management_form }}
+  <table class="highlight" id="items-table">
+    <thead class="not-print">
+      <tr>
+        <th>Дата</th>
+        <th>Описание работ</th>
+        <th>Разряд</th>
+        <th>Штучное время</th>
+        <th>Подг.-закл. время</th>
+        <th>Количество</th>
+        <th>Принято работ</th>
+        <th>Отработал часов</th>
+        <th>Отработал дней</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for form in items_formset %}
+      <tr class="formset-row">
+        <td>{{ form.date }}{{ form.date.errors }}</td>
+        <td>{{ form.describer }}{{ form.describer.errors }}</td>
+        <td>{{ form.category }}{{ form.category.errors }}</td>
+        <td>{{ form.unit_time }}{{ form.unit_time.errors }}</td>
+        <td>{{ form.end_time }}{{ form.end_time.errors }}</td>
+        <td>{{ form.amount }}{{ form.amount.errors }}</td>
+        <td>{{ form.price }}{{ form.price.errors }}</td>
+        <td>{{ form.fulfil_time }}{{ form.fulfil_time.errors }}</td>
+        <td>{{ form.fulfil_day }}{{ form.fulfil_day.errors }}</td>
+        <td class="not-print">
+          {{ form.DELETE }}
+          {{ form.id }}
+          <button type="button" class="btn red btn-small delete-row">
+            <i class="material-icons">delete</i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Табличная часть: Рабочие -->
+  <h5 class="not-print" style="margin-top: 30px;">Рабочие в наряде</h5>
+  {{ workers_formset.management_form }}
+  <table class="highlight" id="workers-table">
+    <thead class="not-print">
+      <tr>
+        <th>Сотрудник</th>
+        <th>Категория</th>
+        <th>Разряд работы</th>
+        <th>Табельный номер</th>
+        <th>Отработано часов</th>
+        <th>Отработано дней</th>
+        <th>Сумма</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for form in workers_formset %}
+      <tr class="formset-row-worker">
+        <td>{{ form.fio }}{{ form.fio.errors }}</td>
+        <td>{{ form.category }}{{ form.category.errors }}</td>
+        <td>{{ form.razriad }}{{ form.razriad.errors }}</td>
+        <td>{{ form.tabel_num }}{{ form.tabel_num.errors }}</td>
+        <td>{{ form.worked_hour }}{{ form.worked_hour.errors }}</td>
+        <td>{{ form.worked_day }}{{ form.worked_day.errors }}</td>
+        <td>{{ form.summa }}{{ form.summa.errors }}</td>
+        <td class="not-print">
+          {{ form.DELETE }}
+          {{ form.id }}
+          <button type="button" class="btn red btn-small delete-row-worker">
+            <i class="material-icons">delete</i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="row not-print">
+    <div class="col s12 right-align">
+      <button class="btn waves-effect green" type="submit">
+        <i class="material-icons left">save</i>Сохранить
+      </button>
+      <a href="{% url 'nariads:view' form.instance.id %}" class="btn blue">
+        <i class="material-icons left">visibility</i>Просмотр
+      </a>
+      <a href="{% url 'nariads:list' %}" class="btn grey">
+        <i class="material-icons left">cancel</i>Отмена
+      </a>
+    </div>
+  </div>
+</form>
+
+<div id="print-preview" class="print-only" style="display: none;">
+  <h4>Предпросмотр наряда #{{ form.instance.id }}</h4>
+  <table class="highlight">
+    <tr><td><b>Организация</b></td><td id="print-org"></td></tr>
+    <tr><td><b>Бригадир</b></td><td id="print-brig"></td></tr>
+    <tr><td><b>Ответственный</b></td><td id="print-resp"></td></tr>
+    <tr><td><b>Задание выдал</b></td><td id="print-issued"></td></tr>
+    <tr><td><b>Задание принял</b></td><td id="print-received"></td></tr>
+    <tr><td><b>Нормировщик</b></td><td id="print-rationer"></td></tr>
+    <tr><td><b>Дата выдачи</b></td><td id="print-date"></td></tr>
+    <tr><td><b>Оценка качества</b></td><td id="print-eval"></td></tr>
+  </table>
+
+  <h5 style="margin-top: 20px;">Работы</h5>
+  <table class="highlight" id="print-items">
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>Дата</th>
+        <th>Описание работ</th>
+        <th>Разряд</th>
+        <th>Штучное время</th>
+        <th>Подг.-закл. время</th>
+        <th>Количество</th>
+        <th>Принято работ</th>
+        <th>Отработал часов</th>
+        <th>Отработал дней</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h5 style="margin-top: 20px;">Рабочие</h5>
+  <table class="highlight" id="print-workers">
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>Сотрудник</th>
+        <th>Категория</th>
+        <th>Разряд работы</th>
+        <th>Табельный номер</th>
+        <th>Отработано часов</th>
+        <th>Отработано дней</th>
+        <th>Сумма</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  const emptyItemHtml = `{{ empty_item_html|escapejs }}`;
+  const emptyWorkerHtml = `{{ empty_worker_html|escapejs }}`;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    M.FormSelect.init(document.querySelectorAll("select"));
+    M.Datepicker.init(document.querySelectorAll(".datepicker"), {
+      format: "dd.mm.yyyy",
+      i18n: {
+        cancel: "Отмена",
+        clear: "Очистить",
+        done: "OK",
+        months: [
+          "Январь", "Февраль", "Март", "Апрель",
+          "Май", "Июнь", "Июль", "Август",
+          "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+        ],
+        monthsShort: [
+          "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+          "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"
+        ],
+        weekdays: [
+          "Воскресенье", "Понедельник", "Вторник", "Среда",
+          "Четверг", "Пятница", "Суббота"
+        ],
+        weekdaysShort: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+        weekdaysAbbrev: ["В", "П", "В", "С", "Ч", "П", "С"]
+      }
+    });
+
+    initItemsFormset("{{ items_formset.prefix }}");
+    initWorkersFormset("{{ workers_formset.prefix }}");
+  });
+
+  function initItemsFormset(prefix) {
+    const tableBody = document.querySelector("#items-table tbody");
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "btn green";
+    addButton.innerHTML = '<i class="material-icons left">add</i>Добавить работу';
+    addButton.style.marginTop = "10px";
+    addButton.addEventListener("click", () => addItemRow(prefix));
+    tableBody.closest("table").parentNode.insertBefore(addButton, tableBody.closest("table").nextSibling);
+    setupDeleteHandlers(prefix, '.delete-row', 'items');
+  }
+
+  function initWorkersFormset(prefix) {
+    const tableBody = document.querySelector("#workers-table tbody");
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "btn green";
+    addButton.innerHTML = '<i class="material-icons left">add</i>Добавить рабочего';
+    addButton.style.marginTop = "10px";
+    addButton.addEventListener("click", () => addWorkerRow(prefix));
+    tableBody.closest("table").parentNode.insertBefore(addButton, tableBody.closest("table").nextSibling);
+    setupDeleteHandlers(prefix, '.delete-row-worker', 'workers');
+  }
+
+  function addItemRow(prefix) {
+    const tableBody = document.querySelector("#items-table tbody");
+    const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+    const formIndex = parseInt(totalFormsInput.value);
+
+    const tempDiv = document.createElement("tr");
+    tempDiv.innerHTML = emptyItemHtml;
+    let newRow = tempDiv.querySelector(".formset-row") || createRowFromHTML(tempDiv.innerHTML, 'formset-row');
+
+    updateRowAttributes(newRow, prefix, formIndex);
+    tableBody.appendChild(newRow);
+    totalFormsInput.value = formIndex + 1;
+
+    // Инициализируем Materialize для новых полей
+    M.Datepicker.init(newRow.querySelectorAll('.datepicker'));
+    setupDeleteHandler(newRow, prefix, '.delete-row', 'items');
+  }
+
+  function addWorkerRow(prefix) {
+    const tableBody = document.querySelector("#workers-table tbody");
+    const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+    const formIndex = parseInt(totalFormsInput.value);
+
+    const tempDiv = document.createElement("tr");
+    tempDiv.innerHTML = emptyWorkerHtml;
+    let newRow = tempDiv.querySelector(".formset-row-worker") || createRowFromHTML(tempDiv.innerHTML, 'formset-row-worker');
+
+    updateRowAttributes(newRow, prefix, formIndex);
+    tableBody.appendChild(newRow);
+    totalFormsInput.value = formIndex + 1;
+
+    // Инициализируем Materialize для новых селектов
+    M.FormSelect.init(newRow.querySelectorAll('select'));
+    setupDeleteHandler(newRow, prefix, '.delete-row-worker', 'workers');
+  }
+
+  function createRowFromHTML(html, className) {
+    const row = document.createElement("tr");
+    row.className = className;
+    row.innerHTML = html;
+    return row;
+  }
+
+  function updateRowAttributes(row, prefix, index) {
+    const elements = row.querySelectorAll("input, select, textarea");
+    elements.forEach((element) => {
+      if (element.name) {
+        element.name = element.name.replace(/__prefix__/g, index);
+      }
+      if (element.id) {
+        element.id = element.id.replace(/__prefix__/g, index);
+      }
+    });
+  }
+
+  function setupDeleteHandlers(prefix, selector, tableType) {
+    document.querySelectorAll(selector).forEach((button) => {
+      button.addEventListener("click", function () {
+        removeRow(this, prefix, tableType);
+      });
+    });
+  }
+
+  function setupDeleteHandler(row, prefix, selector, tableType) {
+    const deleteBtn = row.querySelector(selector);
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", function () {
+        removeRow(this, prefix, tableType);
+      });
+    }
+  }
+
+  function removeRow(button, prefix, tableType) {
+    const row = button.closest('tr');
+    const deleteCheckbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+
+    if (deleteCheckbox) {
+      deleteCheckbox.checked = true;
+      row.style.display = "none";
+    } else {
+      row.remove();
+      updateFormIndexes(prefix, tableType);
+    }
+  }
+
+  function updateFormIndexes(prefix, tableType) {
+    const tableId = tableType === 'items' ? 'items-table' : 'workers-table';
+    const rowClass = tableType === 'items' ? '.formset-row' : '.formset-row-worker';
+    
+    const rows = document.querySelectorAll(`#${tableId} ${rowClass}:not([style*="display: none"])`);
+    const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+    
+    rows.forEach((row, index) => {
+      updateRowAttributes(row, prefix, index);
+    });
+    
+    totalFormsInput.value = rows.length;
+  }
+
+  function printNariadForm() {
+    // Основная информация
+    document.getElementById("print-org").textContent = 
+      document.getElementById("id_organization").options[document.getElementById("id_organization").selectedIndex].text;
+    
+    document.getElementById("print-brig").textContent = 
+      document.getElementById("id_brigadier").options[document.getElementById("id_brigadier").selectedIndex].text;
+    
+    document.getElementById("print-resp").textContent = 
+      document.getElementById("id_responsible").options[document.getElementById("id_responsible").selectedIndex].text;
+    
+    document.getElementById("print-issued").textContent = 
+      document.getElementById("id_issued_man").options[document.getElementById("id_issued_man").selectedIndex].text;
+    
+    document.getElementById("print-received").textContent = 
+      document.getElementById("id_received").options[document.getElementById("id_received").selectedIndex].text;
+    
+    document.getElementById("print-rationer").textContent = 
+      document.getElementById("id_rationer").options[document.getElementById("id_rationer").selectedIndex].text;
+    
+    document.getElementById("print-date").textContent = 
+      document.getElementById("id_date_of_issue").value;
+    
+    document.getElementById("print-eval").textContent = 
+      document.getElementById("id_evaluation").value;
+
+    // Работы
+    const itemsTable = document.getElementById("print-items").querySelector("tbody");
+    itemsTable.innerHTML = "";
+    
+    const itemRows = document.querySelectorAll("#items-table .formset-row:not([style*='display: none'])");
+    itemRows.forEach((row, index) => {
+      const date = row.querySelector('input[name$="-date"]')?.value || '';
+      const describer = row.querySelector('input[name$="-describer"]')?.value || '';
+      const category = row.querySelector('input[name$="-category"]')?.value || '';
+      const unitTime = row.querySelector('input[name$="-unit_time"]')?.value || '';
+      const endTime = row.querySelector('input[name$="-end_time"]')?.value || '';
+      const amount = row.querySelector('input[name$="-amount"]')?.value || '';
+      const price = row.querySelector('input[name$="-price"]')?.value || '';
+      const fulfilTime = row.querySelector('input[name$="-fulfil_time"]')?.value || '';
+      const fulfilDay = row.querySelector('input[name$="-fulfil_day"]')?.value || '';
+      
+      if (describer || amount) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${date}</td>
+          <td>${describer}</td>
+          <td>${category}</td>
+          <td>${unitTime}</td>
+          <td>${endTime}</td>
+          <td>${amount}</td>
+          <td>${price}</td>
+          <td>${fulfilTime}</td>
+          <td>${fulfilDay}</td>
+        `;
+        itemsTable.appendChild(tr);
+      }
+    });
+
+    // Рабочие
+    const workersTable = document.getElementById("print-workers").querySelector("tbody");
+    workersTable.innerHTML = "";
+    
+    const workerRows = document.querySelectorAll("#workers-table .formset-row-worker:not([style*='display: none'])");
+    workerRows.forEach((row, index) => {
+      const fioSelect = row.querySelector('select[name$="-fio"]');
+      const fio = fioSelect ? fioSelect.options[fioSelect.selectedIndex].text : '';
+      const category = row.querySelector('input[name$="-category"]')?.value || '';
+      const razriad = row.querySelector('input[name$="-razriad"]')?.value || '';
+      const tabelNum = row.querySelector('input[name$="-tabel_num"]')?.value || '';
+      const workedHour = row.querySelector('input[name$="-worked_hour"]')?.value || '';
+      const workedDay = row.querySelector('input[name$="-worked_day"]')?.value || '';
+      const summa = row.querySelector('input[name$="-summa"]')?.value || '';
+      
+      if (fio || category) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${fio}</td>
+          <td>${category}</td>
+          <td>${razriad}</td>
+          <td>${tabelNum}</td>
+          <td>${workedHour}</td>
+          <td>${workedDay}</td>
+          <td>${summa}</td>
+        `;
+        workersTable.appendChild(tr);
+      }
+    });
+
+    const printPreview = document.getElementById("print-preview");
+    printPreview.style.display = "block";
+    
+    window.print();
+    
+    printPreview.style.display = "none";
+  }
+</script>
+
+<style>
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .print-only, .print-only * {
+      visibility: visible;
+    }
+    .print-only {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+  }
+  @media print {
+    .not-print {
+      display: none;
+    }
+  }
+  table {
+    font-size: 0.8rem;
+  }
+  table th, table td {
+    padding: 8px 5px;
+  }
+</style>
+{% endblock %}

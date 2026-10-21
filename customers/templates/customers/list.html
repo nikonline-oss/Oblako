@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Контрагенты{% endblock %}
+
+{% block content %}
+<h4>Контрагенты</h4>
+<div class='right-align' style='margin-bottom: 20px;'>
+  <a href='{% url "customers:create" %}' class='btn blue'>
+    <i class='material-icons left'>add</i>Добавить
+  </a>
+</div>
+
+<table class='highlight'>
+  <thead>
+    <tr><th>ID</th><th>Название</th><th>Действия</th></tr>
+  </thead>
+  <tbody>
+    {% for customer in customers %}
+    <tr>
+      <td>{{ customer.id }}</td>
+      <td>{{ customer.name }}</td>
+      <td>
+        <a href='{% url "customers:edit" customer.pk %}' class='btn-small orange'>
+          <i class='material-icons'>edit</i>
+        </a>
+        <a href='{% url "customers:delete" customer.pk %}' class='btn-small red' onclick='return confirm("Удалить?")'>
+          <i class='material-icons'>delete</i>
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

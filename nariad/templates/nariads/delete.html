@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Удаление наряда #{{ object.id }}{% endblock %}
+
+{% block content %}
+<h4>Удалить наряд #{{ object.id }} на сдельную работу?</h4>
+<form method="post">
+  {% csrf_token %}
+  <p>Вы уверены, что хотите удалить этот наряд?</p>
+  <div class="card-panel yellow lighten-4">
+    <strong>Организация:</strong> {{ object.organization.name }}<br>
+    <strong>Бригадир:</strong> {{ object.brigadier.last_name }} {{ object.brigadier.first_name }}<br>
+    <strong>Дата выдачи:</strong> {{ object.date_of_issue|date:"d.m.Y" }}
+  </div>
+  <button class="btn red">Удалить</button>
+  <a href="{% url 'nariads:list' %}" class="btn grey">Отмена</a>
+</form>
+{% endblock %}

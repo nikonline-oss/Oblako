@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+{% load static %}
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Доверенность №{{ proxy.id }}</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      line-height: 1.5;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 18pt;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    .header .doc-number {
+      font-weight: bold;
+    }
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .info-table td {
+      padding: 8px 10px;
+      vertical-align: top;
+      border: 1px solid #ddd;
+    }
+    .info-table td:first-child {
+      width: 30%;
+      font-weight: bold;
+      background-color: #f5f5f5;
+    }
+    .products-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 25px 0;
+    }
+    .products-table th {
+      background-color: #f5f5f5;
+      text-align: left;
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    .products-table td {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+    }
+    .signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+    }
+    .signature-block {
+      width: 45%;
+    }
+    .signature-line {
+      border-bottom: 1px solid #000;
+      margin: 40px 0 5px;
+    }
+    .footer {
+      margin-top: 50px;
+      font-size: 10pt;
+      text-align: center;
+      color: #666;
+    }
+    @media print {
+      body {
+        padding: 0;
+      }
+      .no-print {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Доверенность</h1>
+    <div class="doc-number">№ {{ proxy.id }}</div>
+  </div>
+
+  <table class="info-table">
+    <tr>
+      <td>Организация:</td>
+      <td>{{ proxy.organization.name }}</td>
+    </tr>
+    <tr>
+      <td>Адрес:</td>
+      <td>{{ proxy.organization.address }}</td>
+    </tr>
+    <tr>
+      <td>Руководитель:</td>
+      <td>{{ proxy.organization.chief }}</td>
+    </tr>
+    <tr>
+      <td>Контрагент:</td>
+      <td>{{ proxy.customer.name }}</td>
+    </tr>
+    <tr>
+      <td>Сотрудник:</td>
+      <td>{{ proxy.employee.last_name }} {{proxy.employee.first_name}} {{proxy.employee.middle_name}}</td>
+    </tr>
+    <tr>
+      <td>Паспорт:</td>
+      <td>
+        {{ proxy.employee.passport_series }} №{{ proxy.employee.passport_number }}, 
+        выдан {{ proxy.employee.passport_issued_by }} 
+        {{ proxy.employee.passport_issue_date|date:"d.m.Y" }}
+      </td>
+    </tr>
+    <tr>
+      <td>Действительна до:</td>
+      <td>{{ proxy.is_valid_until|date:"d.m.Y" }}</td>
+    </tr>
+  </table>
+
+  <h3>Товарно-материальные ценности:</h3>
+  <table class="products-table">
+    <thead>
+      <tr>
+        <th width="5%">№</th>
+        <th width="60%">Наименование</th>
+        <th width="15%">Ед.изм.</th>
+        <th width="20%">Количество</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in proxy.items.all %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ item.product.name }}</td>
+        <td>{{ item.product.unit }}</td>
+        <td>{{ item.amount }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="signatures">
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div>Генеральный директор</div>
+      <div>{{ proxy.organization.name }}</div>
+      <div style="margin-top: 10px;">{{ proxy.organization.chief_short_name }}</div>
+    </div>
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div>Главный бухгалтер</div>
+      <div>{{ proxy.organization.name }}</div>
+      <div style="margin-top: 10px;">{{ proxy.organization.accountant_short_name }}</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Документ сформирован {{ current_date|date:"d.m.Y" }}. Печать обязательна.
+  </div>
+
+  <div class="no-print" style="text-align: center; margin-top: 20px;">
+    <button onclick="window.print()" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer;">
+      Печать документа
+    </button>
+  </div>
+</body>
+</html>

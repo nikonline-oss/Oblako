@@ -1,0 +1,14 @@
+[
+    {
+        "model": "units.unit",
+        "fields": {"name": "шт"}
+    },
+    {
+        "model": "units.unit",
+        "fields": {"name": "кг"}
+    },
+    {
+        "model": "units.unit",
+        "fields": {"name": "л"}
+    }
+]

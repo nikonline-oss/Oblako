@@ -1,0 +1,23 @@
+<!-- accounts/templates/accounts/create.html -->
+{% extends 'base.html' %}
+{% block title %}Добавить счёт{% endblock %}
+
+{% block content %}
+<h4>Добавить счёт</h4>
+<form method="post">
+  {% csrf_token %}
+  <div class="input-field">
+    {{ form.account }}
+    <label for="{{ form.account.id_for_label }}">Номер счёта</label>
+  </div>
+  <div class="input-field">
+    {{ form.bank_name }}
+    <label for="{{ form.bank_name.id_for_label }}">Банк</label>
+  </div>
+  <div class="input-field">
+    {{ form.bank_identity_number }}
+    <label for="{{ form.bank_identity_number.id_for_label }}">БИК</label>
+  </div>
+  <button class="btn green">Добавить</button>
+</form>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Редактировать бригадира{% endblock %}
+
+{% block content %}
+<h4>Редактировать бригадира</h4>
+<form method="post">
+  {% csrf_token %}
+  
+  <div class="row">
+    <div class="input-field col s4">
+      {{ form.last_name }}
+      <label class="active">Фамилия</label>
+      {{ form.last_name.errors }}
+    </div>
+    <div class="input-field col s4">
+      {{ form.first_name }}
+      <label class="active">Имя</label>
+      {{ form.first_name.errors }}
+    </div>
+    <div class="input-field col s4">
+      {{ form.middle_name }}
+      <label class="active">Отчество</label>
+      {{ form.middle_name.errors }}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="input-field col s6">
+      {{ form.pos }}
+      <label class="active">Должность</label>
+      {{ form.pos.errors }}
+    </div>
+    <div class="input-field col s3">
+      {{ form.passport_series }}
+      <label class="active">Серия паспорта</label>
+      {{ form.passport_series.errors }}
+    </div>
+    <div class="input-field col s3">
+      {{ form.passport_number }}
+      <label class="active">Номер паспорта</label>
+      {{ form.passport_number.errors }}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="input-field col s8">
+      {{ form.passport_issued_by }}
+      <label class="active">Кем выдан</label>
+      {{ form.passport_issued_by.errors }}
+    </div>
+    <div class="input-field col s4">
+      {{ form.passport_date_of_issue }}
+      <label class="active">Дата выдачи</label>
+      {{ form.passport_date_of_issue.errors }}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col s12 right-align">
+      <button class="btn blue" type="submit">Сохранить</button>
+      <a href="{% url 'brigadier:list' %}" class="btn grey">Отмена</a>
+    </div>
+  </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Инициализация Materialize селектов
+  M.FormSelect.init(document.querySelectorAll('select'));
+  
+  // Инициализация датапикера
+  M.Datepicker.init(document.querySelectorAll('.datepicker'), {
+    format: 'dd.mm.yyyy',
+    i18n: {
+      cancel: 'Отмена',
+      clear: 'Очистить',
+      done: 'OK',
+      months: [
+        'Январь', 'Февраль', 'Март', 'Апрель',
+        'Май', 'Июнь', 'Июль', 'Август',
+        'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+      ],
+      monthsShort: [
+        'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+        'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'
+      ],
+      weekdays: [
+        'Воскресенье', 'Понедельник', 'Вторник', 'Среда',
+        'Четверг', 'Пятница', 'Суббота'
+      ],
+      weekdaysShort: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+      weekdaysAbbrev: ['В', 'П', 'В', 'С', 'Ч', 'П', 'С']
+    }
+  });
+});
+</script>
+{% endblock %}

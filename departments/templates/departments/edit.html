@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Редактировать отдел{% endblock %}
+
+{% block content %}
+<h4>Редактировать отдел</h4>
+<form method="post">
+  {% csrf_token %}
+  <div class="input-field">
+    {{ form.name }}
+    <label class="active" for="{{ form.name.id_for_label }}">Название</label>
+  </div>
+  <button type="submit" class="btn orange">
+    <i class="material-icons left">save</i>Сохранить
+  </button>
+</form>
+{% endblock %}

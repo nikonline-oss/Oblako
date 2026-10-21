@@ -1,0 +1,386 @@
+{% extends 'base.html' %} {% block title %}Создание доверенности{% endblock %}
+{% block content %}
+<div class="row valign-wrapper not-print">
+  <h4 class="col s10">Создание доверенности</h4>
+  <div class="col s2 right-align">
+    <button
+      class="btn-floating z-depth-0 waves-effect waves-light"
+      onclick="printProxyForm()"
+    >
+      <i class="material-icons green">print</i>
+    </button>
+  </div>
+</div>
+
+<form method="post" id="proxy-form">
+  {% csrf_token %}
+
+  <div class="row">
+    <div class="input-field col s6">
+      {{ form.organization }}
+      <label>Организация</label>
+      {{ form.organization.errors }}
+    </div>
+
+    <div class="input-field col s6">
+      {{ form.employee }}
+      <label>Сотрудник</label>
+      {{ form.employee.errors }}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="input-field col s6">
+      {{ form.customer }}
+      <label>Контрагент</label>
+      {{ form.customer.errors }}
+    </div>
+
+    <div class="input-field col s3">
+      {{ form.date_of_issue }}
+      <label class="active">Дата выдачи</label>
+      {{ form.date_of_issue.errors }}
+    </div>
+
+    <div class="input-field col s3">
+      {{ form.is_valid_until }}
+      <label class="active">Действительна до</label>
+      {{ form.is_valid_until.errors }}
+    </div>
+  </div>
+
+  <h5 class="not-print">Товары в доверенности</h5>
+
+  {{ formset.management_form }}
+  <table class="highlight" id="product-table">
+    <thead class="not-print">
+      <tr>
+        <th>Товар</th>
+        <th>Количество</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for form in formset %}
+      <tr class="formset-row">
+        <td>
+          {{ form.product }} {% if form.product.errors %}
+          <div class="error">{{ form.product.errors }}</div>
+          {% endif %}
+        </td>
+        <td>
+          {{ form.amount }} {% if form.amount.errors %}
+          <div class="error">{{ form.amount.errors }}</div>
+          {% endif %}
+        </td>
+        <td class="not-print">
+          {{ form.DELETE }} {{ form.id }}
+          <button type="button" class="btn red btn-small delete-row">
+            <i class="material-icons">delete</i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="row not-print">
+    <div class="col s12 right-align">
+      <button class="btn waves-effect blue" type="submit">
+        <i class="material-icons left">add</i>Создать
+      </button>
+      <a href="{% url 'proxies:list' %}" class="btn grey">
+        <i class="material-icons left">cancel</i>Отмена
+      </a>
+    </div>
+  </div>
+</form>
+
+<div id="print-preview" class="print-only" style="display: none">
+  <h4>Предпросмотр доверенности</h4>
+  <table class="highlight">
+    <tr>
+      <td><b>Организация</b></td>
+      <td id="print-org"></td>
+    </tr>
+    <tr>
+      <td><b>Сотрудник</b></td>
+      <td id="print-emp"></td>
+    </tr>
+    <tr>
+      <td><b>Контрагент</b></td>
+      <td id="print-cust"></td>
+    </tr>
+    <tr>
+      <td><b>Дата выдачи</b></td>
+      <td id="print-date-from"></td>
+    </tr>
+    <tr>
+      <td><b>Действительна до</b></td>
+      <td id="print-date-to"></td>
+    </tr>
+  </table>
+
+  <h5 style="margin-top: 20px">Товары</h5>
+  <table class="highlight" id="print-products">
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>Товар</th>
+        <th>Количество</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  const emptyFormHtml = `{{ empty_form_html|escapejs }}`;
+  document.addEventListener("DOMContentLoaded", function () {
+    // Инициализация Materialize компонентов
+    M.FormSelect.init(document.querySelectorAll("select"));
+    M.Datepicker.init(document.querySelectorAll(".datepicker"), {
+      format: "dd.mm.yyyy",
+      i18n: {
+        cancel: "Отмена",
+        clear: "Очистить",
+        done: "OK",
+        months: [
+          "Январь",
+          "Февраль",
+          "Март",
+          "Апрель",
+          "Май",
+          "Июнь",
+          "Июль",
+          "Август",
+          "Сентябрь",
+          "Октябрь",
+          "Ноябрь",
+          "Декабрь",
+        ],
+        monthsShort: [
+          "Янв",
+          "Фев",
+          "Мар",
+          "Апр",
+          "Май",
+          "Июн",
+          "Июл",
+          "Авг",
+          "Сен",
+          "Окт",
+          "Ноя",
+          "Дек",
+        ],
+        weekdays: [
+          "Воскресенье",
+          "Понедельник",
+          "Вторник",
+          "Среда",
+          "Четверг",
+          "Пятница",
+          "Суббота",
+        ],
+        weekdaysShort: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+        weekdaysAbbrev: ["В", "П", "В", "С", "Ч", "П", "С"],
+      },
+    });
+
+    // Инициализация формы товаров
+    initProductFormset("{{ formset.prefix }}");
+  });
+
+  function initProductFormset(prefix) {
+    const tableBody = document.querySelector("#product-table tbody");
+
+    // Создаем кнопку добавления
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "btn green";
+    addButton.innerHTML =
+      '<i class="material-icons left">add</i>Добавить товар';
+    addButton.style.marginTop = "10px";
+    addButton.addEventListener("click", () => addProductRow(prefix));
+
+    tableBody
+      .closest("table")
+      .parentNode.insertBefore(
+        addButton,
+        tableBody.closest("table").nextSibling
+      );
+    setupDeleteHandlers(prefix);
+  }
+
+  function addProductRow(prefix) {
+    const tableBody = document.querySelector("#product-table tbody");
+    const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+    const formIndex = parseInt(totalFormsInput.value);
+
+    // Создаем временный контейнер
+    const tempDiv = document.createElement("tr");
+    tempDiv.innerHTML = emptyFormHtml;
+
+    // Находим строку в временном контейнере
+    let newRow;
+    const formsetRow = tempDiv.querySelector(".formset-row");
+    if (formsetRow) {
+      newRow = formsetRow;
+    } else {
+      // Если нет класса formset-row, создаем строку вручную
+      newRow = document.createElement("tr");
+      newRow.className = "formset-row";
+      newRow.innerHTML = tempDiv.innerHTML;
+    }
+
+    // Обновляем атрибуты
+    updateRowAttributes(newRow, prefix, formIndex);
+
+    tableBody.appendChild(newRow);
+    totalFormsInput.value = formIndex + 1;
+
+    // Инициализируем Materialize
+    const select = newRow.querySelector("select");
+    if (select) {
+      M.FormSelect.init(select);
+    }
+
+    setupDeleteHandler(newRow, prefix);
+  }
+
+  function updateRowAttributes(row, prefix, index) {
+    const elements = row.querySelectorAll("input, select, textarea");
+    elements.forEach((element) => {
+      if (element.name) {
+        element.name = element.name.replace(/__prefix__/g, index);
+      }
+      if (element.id) {
+        element.id = element.id.replace(/__prefix__/g, index);
+      }
+    });
+  }
+
+  function setupDeleteHandlers(prefix) {
+    document.querySelectorAll(".formset-row .delete-row").forEach((button) => {
+      button.addEventListener("click", function () {
+        removeProductRow(this, prefix);
+      });
+    });
+  }
+
+  function setupDeleteHandler(row, prefix) {
+    const deleteBtn = row.querySelector(".delete-row");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", function () {
+        removeProductRow(this, prefix);
+      });
+    }
+  }
+
+  function removeProductRow(button, prefix) {
+    const row = button.closest(".formset-row");
+    const deleteCheckbox = row.querySelector(
+      'input[type="checkbox"][name$="-DELETE"]'
+    );
+
+    if (deleteCheckbox) {
+      deleteCheckbox.checked = true;
+      row.style.display = "none";
+    } else {
+      row.remove();
+      updateFormIndexes(prefix);
+    }
+  }
+
+  function updateFormIndexes(prefix) {
+    const rows = document.querySelectorAll(
+      '#product-table .formset-row:not([style*="display: none"])'
+    );
+    const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+
+    rows.forEach((row, index) => {
+      updateRowAttributes(row, prefix, index);
+    });
+
+    totalFormsInput.value = rows.length;
+  }
+  function printProxyForm() {
+    document.getElementById("print-org").textContent =
+      document.getElementById("id_organization").options[
+        document.getElementById("id_organization").selectedIndex
+      ].text;
+
+    document.getElementById("print-emp").textContent =
+      document.getElementById("id_employee").options[
+        document.getElementById("id_employee").selectedIndex
+      ].text;
+
+    document.getElementById("print-cust").textContent =
+      document.getElementById("id_customer").options[
+        document.getElementById("id_customer").selectedIndex
+      ].text;
+
+    document.getElementById("print-date-from").textContent =
+      document.getElementById("id_date_of_issue").value;
+
+    document.getElementById("print-date-to").textContent =
+      document.getElementById("id_is_valid_until").value;
+
+    const productsTable = document
+      .getElementById("print-products")
+      .querySelector("tbody");
+    productsTable.innerHTML = "";
+
+    const productRows = document.querySelectorAll(
+      "#product-table .formset-row"
+    );
+    productRows.forEach((row, index) => {
+      const productName = row.querySelector(
+        'select[name$="-product"] option:checked'
+      ).text;
+      const amount = row.querySelector('input[name$="-amount"]').value;
+
+      if (productName && amount) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td>${productName}</td>
+        <td>${amount}</td>
+      `;
+        productsTable.appendChild(tr);
+      }
+    });
+
+    const printPreview = document.getElementById("print-preview");
+    printPreview.style.display = "block";
+
+    window.print();
+
+    printPreview.style.display = "none";
+  }
+</script>
+
+<style>
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .print-only,
+    .print-only * {
+      visibility: visible;
+    }
+    .print-only {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+  }
+  
+  @media print {
+    .not-print {
+      display: none;
+    }
+  }
+</style>
+{% endblock %}

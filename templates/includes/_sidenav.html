@@ -1,0 +1,9 @@
+<!-- templates/includes/_sidenav.html -->
+<ul class="sidenav sidenav-fixed">
+  <li class="logo-container">
+    <i class="material-icons left">description</i>
+    {% if page_title %}{{ page_title }}{% else %}Документы{% endif %}
+  </li>
+  <li><a href="{% url 'proxies:list' %}" class="blue-text">Доверенности</a></li>
+  <li><a href="{% url 'nariads:list' %}" class="blue-text">Наряды на сдельную работу</a></li>
+</ul>

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Должности{% endblock %}
+
+{% block content %}
+<h4>Должности</h4>
+<div class='right-align' style='margin-bottom: 20px;'>
+  <a href='{% url "positions:create" %}' class='btn blue'>
+    <i class='material-icons left'>add</i>Добавить
+  </a>
+</div>
+
+<table class='highlight'>
+  <thead>
+    <tr><th>ID</th><th>Название</th><th>Действия</th></tr>
+  </thead>
+  <tbody>
+    {% for position in positions %}
+    <tr>
+      <td>{{ position.id }}</td>
+      <td>{{ position.name }}</td>
+      <td>
+        <a href='{% url "positions:edit" position.pk %}' class='btn-small orange'>
+          <i class='material-icons'>edit</i>
+        </a>
+        <a href='{% url "positions:delete" position.pk %}' class='btn-small red' onclick='return confirm("Удалить?")'>
+          <i class='material-icons'>delete</i>
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,19 @@
+<!-- templates/includes/_navbar.html -->
+<div class="navbar-fixed">
+  <nav class="blue navbar">
+    <div class="nav-wrapper">
+      <ul class="left hide-on-med-and-down">
+        <li><a href="{% url 'proxies:list' %}">Документы</a></li>
+        <li><a href="{% url 'products:list' %}">Товары</a></li>
+        <li><a href="{% url 'employees:list' %}">Сотрудники</a></li>
+        <li><a href="{% url 'customers:list' %}">Контрагенты</a></li>
+        <li><a href="{% url 'organizations:list' %}">Организации</a></li>
+        <li><a href="{% url 'accounts:list' %}">Счета</a></li>
+        <li><a href="{% url 'departments:list' %}">Отделы</a></li>
+        <li><a href="{% url 'positions:list' %}">Должности</a></li>
+        <li><a href="{% url 'brigadier:list' %}">Бригадиры</a></li>
+        <li><a href="{% url 'units:list' %}">Ед. Измерения</a></li>
+      </ul>
+    </div>
+  </nav>
+</div>

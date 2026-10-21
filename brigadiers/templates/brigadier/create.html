@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Добавить бригадира{% endblock %}
+
+{% block content %}
+<h4>Добавить бригадира</h4>
+<form method="post">
+  {% csrf_token %}
+  
+  <div class="row">
+    <div class="input-field col s4">
+      {{ form.last_name }}
+      <label for="{{ form.last_name.id_for_label }}">Фамилия</label>
+      {{ form.last_name.errors }}
+    </div>
+    <div class="input-field col s4">
+      {{ form.first_name }}
+      <label for="{{ form.first_name.id_for_label }}">Имя</label>
+      {{ form.first_name.errors }}
+    </div>
+    <div class="input-field col s4">
+      {{ form.middle_name }}
+      <label for="{{ form.middle_name.id_for_label }}">Отчество</label>
+      {{ form.middle_name.errors }}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="input-field col s6">
+      {{ form.pos }}
+      <label>Должность</label>
+      {{ form.pos.errors }}
+    </div>
+    <div class="input-field col s3">
+      {{ form.passport_series }}
+      <label for="{{ form.passport_series.id_for_label }}">Серия паспорта</label>
+      {{ form.passport_series.errors }}
+    </div>
+    <div class="input-field col s3">
+      {{ form.passport_number }}
+      <label for="{{ form.passport_number.id_for_label }}">Номер паспорта</label>
+      {{ form.passport_number.errors }}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="input-field col s8">
+      {{ form.passport_issued_by }}
+      <label for="{{ form.passport_issued_by.id_for_label }}">Кем выдан</label>
+      {{ form.passport_issued_by.errors }}
+    </div>
+    <div class="input-field col s4">
+      {{ form.passport_date_of_issue }}
+      <label class="active">Дата выдачи</label>
+      {{ form.passport_date_of_issue.errors }}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col s12 right-align">
+      <button class="btn green" type="submit">Добавить</button>
+      <a href="{% url 'brigadier:list' %}" class="btn grey">Отмена</a>
+    </div>
+  </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Инициализация Materialize селектов
+  M.FormSelect.init(document.querySelectorAll('select'));
+  
+  // Инициализация датапикера
+  M.Datepicker.init(document.querySelectorAll('.datepicker'), {
+    format: 'dd.mm.yyyy',
+    i18n: {
+      cancel: 'Отмена',
+      clear: 'Очистить',
+      done: 'OK',
+      months: [
+        'Январь', 'Февраль', 'Март', 'Апрель',
+        'Май', 'Июнь', 'Июль', 'Август',
+        'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+      ],
+      monthsShort: [
+        'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+        'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'
+      ],
+      weekdays: [
+        'Воскресенье', 'Понедельник', 'Вторник', 'Среда',
+        'Четверг', 'Пятница', 'Суббота'
+      ],
+      weekdaysShort: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+      weekdaysAbbrev: ['В', 'П', 'В', 'С', 'Ч', 'П', 'С']
+    }
+  });
+});
+</script>
+{% endblock %}

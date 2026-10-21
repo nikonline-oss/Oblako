@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Единицы измерения{% endblock %}
+
+{% block content %}
+<h4>Единицы измерения</h4>
+<div class='right-align' style='margin-bottom: 20px;'>
+  <a href='{% url "units:create" %}' class='btn blue'>
+    <i class='material-icons left'>add</i>Добавить
+  </a>
+</div>
+
+<table class='highlight'>
+  <thead>
+    <tr><th>ID</th><th>Название</th><th>Действия</th></tr>
+  </thead>
+  <tbody>
+    {% for unit in units %}
+    <tr>
+      <td>{{ unit.id }}</td>
+      <td>{{ unit.name }}</td>
+      <td>
+        <a href='{% url "units:edit" unit.pk %}' class='btn-small orange'>
+          <i class='material-icons'>edit</i>
+        </a>
+        <a href='{% url "units:delete" unit.pk %}' class='btn-small red' onclick='return confirm("Удалить?");'>
+          <i class='material-icons'>delete</i>
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

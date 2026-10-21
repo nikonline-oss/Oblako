@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Сотрудники{% endblock %}
+
+{% block content %}
+<h4>Сотрудники</h4>
+<div class="right-align" style="margin-bottom: 20px;">
+  <a href="{% url 'employees:create' %}" class="btn blue waves-effect">
+    <i class="material-icons left">add</i>Добавить
+  </a>
+</div>
+
+<table class="highlight striped responsive-table">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>ФИО</th>
+      <th>Должность</th>
+      <th>Паспорт</th>
+      <th>Кем выдан</th>
+      <th>Дата выдачи</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for employee in employees %}
+    <tr>
+      <td>{{ employee.id }}</td>
+      <td>{{ employee.last_name }} {{ employee.first_name }} {{ employee.middle_name }}</td>
+      <td>{{ employee.post }}</td>
+      <td>{{ employee.passport_series }} {{ employee.passport_number }}</td>
+      <td>{{ employee.passport_issued_by }}</td>
+      <td>{{ employee.passport_date_of_issue }}</td>
+      <td>
+        <a href="{% url 'employees:edit' employee.pk %}" class="btn-small orange">
+          <i class="material-icons">edit</i>
+        </a>
+        <a href="{% url 'employees:delete' employee.pk %}" class="btn-small red" onclick="return confirm('Удалить?');">
+          <i class="material-icons">delete</i>
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Товары{% endblock %}
+
+{% block content %}
+<h4>Товары</h4>
+<div class='right-align' style='margin-bottom: 20px;'>
+  <a href='{% url "products:create" %}' class='btn blue'>
+    <i class='material-icons left'>add</i>Добавить
+  </a>
+</div>
+
+<table class='highlight'>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Название</th>
+      <th>Цена</th>
+      <th>Единица измерения</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for product in products %}
+    <tr>
+      <td>{{ product.id }}</td>
+      <td>{{ product.name }}</td>
+      <td>{{ product.price }} руб.</td>
+      <td>{{ product.unit.name }}</td>
+      <td>
+        <a href='{% url "products:edit" product.pk %}' class='btn-small orange'>
+          <i class='material-icons'>edit</i>
+        </a>
+        <a href='{% url "products:delete" product.pk %}' class='btn-small red' onclick='return confirm("Удалить?");'>
+          <i class='material-icons'>delete</i>
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+{% load static %}
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Наряд №{{ nariad.id }}</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      line-height: 1.5;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 18pt;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    .header .doc-number {
+      font-weight: bold;
+      font-size: 14pt;
+    }
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .info-table td {
+      padding: 8px 10px;
+      vertical-align: top;
+      border: 1px solid #ddd;
+    }
+    .info-table td:first-child {
+      width: 25%;
+      font-weight: bold;
+      background-color: #f5f5f5;
+    }
+    .items-table, .workers-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 25px 0;
+      font-size: 10pt;
+    }
+    .items-table th, .workers-table th {
+      background-color: #f5f5f5;
+      text-align: center;
+      padding: 8px 5px;
+      border: 1px solid #ddd;
+      font-weight: bold;
+    }
+    .items-table td, .workers-table td {
+      padding: 6px 5px;
+      border: 1px solid #ddd;
+    }
+    .section-title {
+      margin-top: 30px;
+      margin-bottom: 10px;
+      font-size: 14pt;
+      font-weight: bold;
+      border-bottom: 1px solid #000;
+      padding-bottom: 5px;
+    }
+    .signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 60px;
+    }
+    .signature-block {
+      width: 45%;
+      text-align: center;
+    }
+    .signature-line {
+      border-bottom: 1px solid #000;
+      margin: 40px 0 5px;
+    }
+    .footer {
+      margin-top: 50px;
+      font-size: 9pt;
+      text-align: center;
+      color: #666;
+    }
+    @media print {
+      body {
+        padding: 0;
+      }
+      .no-print {
+        display: none;
+      }
+      .items-table, .workers-table {
+        page-break-inside: avoid;
+      }
+    }
+    .text-center {
+      text-align: center;
+    }
+    .text-right {
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Наряд на сдельную работу</h1>
+    <div class="doc-number">№ {{ nariad.id }}</div>
+  </div>
+
+  <table class="info-table">
+    <tr>
+      <td>Организация:</td>
+      <td>{{ nariad.organization.name }}</td>
+    </tr>
+    <tr>
+      <td>Адрес организации:</td>
+      <td>{{ nariad.organization.address }}</td>
+    </tr>
+    <tr>
+      <td>Бригадир:</td>
+      <td>{{ nariad.brigadier.last_name }} {{ nariad.brigadier.first_name }} {{ nariad.brigadier.middle_name }}</td>
+    </tr>
+    <tr>
+      <td>Паспорт бригадира:</td>
+      <td>
+        {{ nariad.brigadier.passport_series }} №{{ nariad.brigadier.passport_number }}, 
+        выдан {{ nariad.brigadier.passport_issued_by }} 
+        {{ nariad.brigadier.passport_date_of_issue|date:"d.m.Y" }}
+      </td>
+    </tr>
+    <tr>
+      <td>Ответственный:</td>
+      <td>{{ nariad.responsible.last_name }} {{ nariad.responsible.first_name }} {{ nariad.responsible.middle_name }}</td>
+    </tr>
+    <tr>
+      <td>Задание выдал:</td>
+      <td>{{ nariad.issued_man.last_name }} {{ nariad.issued_man.first_name }} {{ nariad.issued_man.middle_name }}</td>
+    </tr>
+    <tr>
+      <td>Задание принял:</td>
+      <td>{{ nariad.received.last_name }} {{ nariad.received.first_name }} {{ nariad.received.middle_name }}</td>
+    </tr>
+    <tr>
+      <td>Нормировщик:</td>
+      <td>{{ nariad.rationer.last_name }} {{ nariad.rationer.first_name }} {{ nariad.rationer.middle_name }}</td>
+    </tr>
+    <tr>
+      <td>Дата выдачи:</td>
+      <td>{{ nariad.date_of_issue|date:"d.m.Y" }}</td>
+    </tr>
+    <tr>
+      <td>Оценка качества выполненных работ:</td>
+      <td>{{ nariad.evaluation }}</td>
+    </tr>
+  </table>
+
+  <div class="section-title">Выполненные работы</div>
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th width="3%">№</th>
+        <th width="8%">Дата</th>
+        <th width="25%">Описание работ</th>
+        <th width="6%">Разряд</th>
+        <th width="8%">Штучное время</th>
+        <th width="10%">Подг.-закл. время</th>
+        <th width="8%">Количество</th>
+        <th width="10%">Принято работ</th>
+        <th width="10%">Отработал часов</th>
+        <th width="12%">Отработал дней</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="text-center">{{ forloop.counter }}</td>
+        <td class="text-center">{{ item.date|date:"d.m.Y" }}</td>
+        <td>{{ item.describer }}</td>
+        <td class="text-center">{{ item.category }}</td>
+        <td class="text-center">{{ item.unit_time }}</td>
+        <td class="text-center">{{ item.end_time }}</td>
+        <td class="text-center">{{ item.amount }}</td>
+        <td class="text-center">{{ item.price }}</td>
+        <td class="text-center">{{ item.fulfil_time }}</td>
+        <td class="text-center">{{ item.fulfil_day }}</td>
+      </tr>
+      {% endfor %}
+      {% if items %}
+      <tr>
+        <td colspan="4" class="text-right"><strong>Итого:</strong></td>
+        <td class="text-center"><strong>{{ items_total.unit_time }}</strong></td>
+        <td class="text-center"><strong>{{ items_total.end_time }}</strong></td>
+        <td class="text-center"><strong>{{ items_total.amount }}</strong></td>
+        <td class="text-center"><strong>{{ items_total.price }}</strong></td>
+        <td class="text-center"><strong>{{ items_total.fulfil_time }}</strong></td>
+        <td class="text-center"><strong>{{ items_total.fulfil_day }}</strong></td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  <div class="section-title">Состав рабочих</div>
+  <table class="workers-table">
+    <thead>
+      <tr>
+        <th width="3%">№</th>
+        <th width="25%">Сотрудник</th>
+        <th width="10%">Категория</th>
+        <th width="10%">Разряд работы</th>
+        <th width="10%">Табельный номер</th>
+        <th width="10%">Отработано часов</th>
+        <th width="10%">Отработано дней</th>
+        <th width="12%">Сумма</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for worker in workers %}
+      <tr>
+        <td class="text-center">{{ forloop.counter }}</td>
+        <td>{{ worker.fio.last_name }} {{ worker.fio.first_name }} {{ worker.fio.middle_name }}</td>
+        <td class="text-center">{{ worker.category }}</td>
+        <td class="text-center">{{ worker.razriad }}</td>
+        <td class="text-center">{{ worker.tabel_num }}</td>
+        <td class="text-center">{{ worker.worked_hour }}</td>
+        <td class="text-center">{{ worker.worked_day }}</td>
+        <td class="text-center">{{ worker.summa }}</td>
+      </tr>
+      {% endfor %}
+      {% if workers %}
+      <tr>
+        <td colspan="5" class="text-right"><strong>Итого:</strong></td>
+        <td class="text-center"><strong>{{ workers_total.worked_hour }}</strong></td>
+        <td class="text-center"><strong>{{ workers_total.worked_day }}</strong></td>
+        <td class="text-center"><strong>{{ workers_total.summa }}</strong></td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  <div class="signatures">
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div>Бригадир</div>
+      <div style="margin-top: 10px;">{{ nariad.brigadier.last_name }} {{ nariad.brigadier.first_name|first }}.{{ nariad.brigadier.middle_name|first }}.</div>
+    </div>
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div>Ответственный</div>
+      <div style="margin-top: 10px;">{{ nariad.responsible.last_name }} {{ nariad.responsible.first_name|first }}.{{ nariad.responsible.middle_name|first }}.</div>
+    </div>
+  </div>
+
+  <div class="signatures">
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div>Задание выдал</div>
+      <div style="margin-top: 10px;">{{ nariad.issued_man.last_name }} {{ nariad.issued_man.first_name|first }}.{{ nariad.issued_man.middle_name|first }}.</div>
+    </div>
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div>Задание принял</div>
+      <div style="margin-top: 10px;">{{ nariad.received.last_name }} {{ nariad.received.first_name|first }}.{{ nariad.received.middle_name|first }}.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Документ сформирован {% now "d.m.Y" %}. Печать обязательна.
+  </div>
+
+  <div class="no-print" style="text-align: center; margin-top: 30px;">
+    <button onclick="window.print()" style="padding: 12px 24px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+      🖨️ Печать документа
+    </button>
+    <a href="{% url 'nariads:edit' nariad.id %}" style="padding: 12px 24px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; margin-left: 10px; font-size: 14px;">
+      ✏️ Редактировать
+    </a>
+    <a href="{% url 'nariads:list' %}" style="padding: 12px 24px; background: #757575; color: white; text-decoration: none; border-radius: 4px; margin-left: 10px; font-size: 14px;">
+      📋 К списку нарядов
+    </a>
+  </div>
+</body>
+</html>

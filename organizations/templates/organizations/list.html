@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Организации{% endblock %}
+
+{% block content %}
+<h4>Организации</h4>
+<div class='right-align' style='margin-bottom: 20px;'>
+  <a href='{% url "organizations:create" %}' class='btn blue'>
+    <i class='material-icons left'>add</i>Добавить
+  </a>
+</div>
+
+<table class='highlight'>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Название</th>
+      <th>Адрес</th>
+      <th>Счёт</th>
+      <th>Руководитель</th>
+      <th>Главный бухгалтер</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for org in organizations %}
+    <tr>
+      <td>{{ org.id }}</td>
+      <td>{{ org.name }}</td>
+      <td>{{ org.address }}</td>
+      <td>{% if org.account %}{{ org.account }}{% else %}-{% endif %}</td>
+      <td>{{ org.chief }}</td>
+      <td>{{ org.financial_chief }}</td>
+      <td>
+        <a href='{% url "organizations:edit" org.pk %}' class='btn-small orange'>
+          <i class='material-icons'>edit</i>
+        </a>
+        <a href='{% url "organizations:delete" org.pk %}' class='btn-small red' onclick='return confirm("Удалить?");'>
+          <i class='material-icons'>delete</i>
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
