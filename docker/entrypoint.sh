@@ -7,7 +7,10 @@ if [ "${DB_ENGINE:-postgres}" != "sqlite" ]; then
     echo "Waiting for PostgreSQL..."
     sleep 1
   done
-  python manage.py migrate --noinput
+  # В Swarm миграции делает отдельный сервис, реплики web их пропускают
+  if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
+    python manage.py migrate --noinput
+  fi
   python manage.py collectstatic --noinput
 fi
 

@@ -17,7 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from . import views
+
 urlpatterns = [
+    path('', views.swarm_info, name='swarm_info'),
     path('admin/', admin.site.urls),
     path('customers/', include('customers.urls')),
     path('accounts/', include('accounts.urls')),
