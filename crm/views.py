@@ -9,12 +9,19 @@ from django.http import JsonResponse
 def _host_ip():
     try:
         return socket.gethostbyname(socket.gethostname())
-    except OSError:  # на Heroku имя dyno может не резолвиться
+    except OSError:  # на PaaS имя инстанса может не резолвиться
         return None
 
 
+def _release():
+    """Номер релиза на PaaS: релиз Heroku или коммит, собранный Render."""
+    if os.environ.get('HEROKU_RELEASE_VERSION'):
+        return os.environ['HEROKU_RELEASE_VERSION']
+    return os.environ.get('RENDER_GIT_COMMIT', '')[:7] or None
+
+
 def swarm_info(request):
-    """Версия приложения, кто обработал запрос и что вернула БД (Swarm, Heroku)."""
+    """Версия приложения, кто обработал запрос и что вернула БД (Swarm, Heroku, Render)."""
     with connection.cursor() as cursor:
         cursor.execute('SELECT version(), now(), inet_server_addr()')
         db_version, db_time, db_addr = cursor.fetchone()
@@ -25,8 +32,8 @@ def swarm_info(request):
 
     return JsonResponse({
         'app_version': settings.APP_VERSION,
-        'heroku_release': os.environ.get('HEROKU_RELEASE_VERSION'),
-        'web_container': os.environ.get('DYNO') or socket.gethostname(),
+        'release': _release(),
+        'web_container': os.environ.get('DYNO') or os.environ.get('RENDER_INSTANCE_ID') or socket.gethostname(),
         'web_ip': _host_ip(),
         'db_host': connection.settings_dict['HOST'],
         'db_ip': str(db_addr),

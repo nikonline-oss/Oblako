@@ -1,112 +1,111 @@
-# Лабораторная работа №5 «Модель обслуживания PaaS на примере деплоя приложения в Heroku»
+# Лабораторная работа №5 «Модель обслуживания PaaS: деплой приложения в облако»
 
-**Цель:** познакомиться с моделью гибкой разработки ПО, развернуть приложение на Heroku, поработать с Git.
+**Цель:** познакомиться с моделью гибкой разработки ПО, развернуть приложение на PaaS-платформе, поработать с Git.
 
 **Порядок выполнения (по заданию):**
-1. Зарегистрироваться в Heroku.
+1. Зарегистрироваться на PaaS-платформе.
 2. Создать тестовое приложение на Python.
-3. Задеплоить приложение на Heroku.
+3. Задеплоить приложение.
 4. Внести изменения в исходный код и снова задеплоить.
-5. Ознакомиться с дополнительными возможностями Heroku и Git.
+5. Ознакомиться с дополнительными возможностями платформы и Git.
 
-**Приложение:** Django-проект **crm** (CRM + раздел Dropbox из ЛР4), БД — Heroku Postgres.
+**Платформа: Render.com вместо Heroku** (замена согласована с преподавателем). С 28.11.2022 у Heroku нет бесплатного тарифа, и создать приложение без привязки карты нельзя (`Error: verification_required`). Render — PaaS той же модели: деплой через Git, сборка платформой, управляемый PostgreSQL. Есть бесплатный тариф без карты.
 
-> С 28.11.2022 у Heroku нет бесплатного тарифа: для деплоя нужна привязанная карта.
-> Минимум — Eco dynos (5 $/мес на все приложения) + Heroku Postgres Essential-0 (~5 $/мес).
-> Для студентов есть кредиты по программе GitHub Student Developer Pack.
+**Приложение:** Django-проект **crm** (CRM + раздел Dropbox из ЛР4), БД — Render PostgreSQL.
+**Репозиторий:** https://github.com/nikonline-oss/Oblako, ветка `init`.
 
-## Что подготовлено в проекте для Heroku
+## Что подготовлено в проекте
 
 | Файл | Зачем |
 |---|---|
-| [Procfile](Procfile) | `web:` — запуск gunicorn; `release:` — `migrate` перед каждым релизом |
-| [.python-version](.python-version) | версия Python для buildpack (3.12) |
-| [requirements.txt](requirements.txt) | зависимости; добавлен `dj-database-url` |
-| [crm/settings.py](crm/settings.py) | БД из `DATABASE_URL` (так её отдаёт Heroku Postgres, с SSL), `SECURE_PROXY_SSL_HEADER` для https за роутером Heroku, `APP_VERSION` |
-| [crm/views.py](crm/views.py) | `GET /` показывает `app_version`, номер релиза Heroku и имя dyno (`web.1`) |
-| [deploy/heroku.sh](deploy/heroku.sh) | весь деплой одной командой через Heroku CLI |
+| [render.yaml](render.yaml) | Blueprint («инфраструктура как код»): web-сервис `crm` + база `crm-db`, команды сборки и запуска, переменные окружения |
+| [deploy/render_start.sh](deploy/render_start.sh) | запуск: `migrate` → загрузка данных CRM, если БД пустая → gunicorn |
+| [requirements.txt](requirements.txt) | зависимости, Render ставит их при сборке |
+| [.python-version](.python-version) | версия Python (3.12) |
+| [crm/settings.py](crm/settings.py) | БД из `DATABASE_URL`, `SECURE_PROXY_SSL_HEADER` для https за прокси Render, `APP_VERSION` |
+| [crm/views.py](crm/views.py) | `GET /`: `app_version`, коммит текущего релиза (`release`), ID инстанса Render, запрос к БД |
 
-Как Heroku запускает приложение:
-- **сборка:** Python buildpack ставит зависимости из `requirements.txt` и сам выполняет `collectstatic` (статику отдаёт WhiteNoise);
-- **release-фаза:** `python manage.py migrate --noinput`;
-- **web dyno:** `gunicorn crm.wsgi:application`. Gunicorn сам слушает порт из переменной `$PORT`, которую выдаёт Heroku.
+Как Render запускает приложение:
+- **сборка** (`buildCommand`): `pip install -r requirements.txt && python manage.py collectstatic --noinput`;
+- **запуск** (`startCommand`): `bash deploy/render_start.sh`. На бесплатном тарифе нет pre-deploy команд и консоли, поэтому миграции и первичная загрузка данных выполняются при старте. Данные грузятся только в пустую БД, поэтому повторные деплои их не дублируют;
+- **порт**: Render передаёт порт в `$PORT`, gunicorn слушает его автоматически;
+- **БД**: `DATABASE_URL` подставляется из базы `crm-db` (`fromDatabase` в `render.yaml`);
+- **секрет** `DJANGO_SECRET_KEY` Render генерирует сам (`generateValue: true`).
+
+Переменные окружения сервиса:
+
+| Переменная | Значение |
+|---|---|
+| `DATABASE_URL` | из `crm-db` |
+| `DJANGO_SECRET_KEY` | сгенерирован Render |
+| `DJANGO_DEBUG` | `0` |
+| `DJANGO_ALLOWED_HOSTS` | `.onrender.com` |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://*.onrender.com` |
+| `DB_SSL` | `0` — внутренняя сеть Render, SSL не обязателен |
+| `WEB_CONCURRENCY` | `2` — воркеры gunicorn (на бесплатном инстансе 512 МБ) |
+| `LOAD_INITIAL_DATA` | `1` — загрузить данные CRM в пустую БД |
+| `DROPBOX_APP_KEY` | задаётся вручную (ЛР4) |
 
 ## Ход работы
 
-### 1. Регистрация и Heroku CLI
-
-1. Зарегистрироваться на https://signup.heroku.com и привязать карту (Account settings → Billing).
-2. Установить Heroku CLI: https://devcenter.heroku.com/articles/heroku-cli (для Windows — установщик).
-3. Войти:
-   ```bash
-   heroku login
-   ```
+### 1. Регистрация
+https://dashboard.render.com/register → **Sign up with GitHub** (аккаунт, где лежит репозиторий `Oblako`). Карта не нужна.
 
 ### 2–3. Деплой
 
-```bash
-./deploy/heroku.sh crm-ivanov --load-data
-```
+1. Код уже в GitHub: `git push Oblako init`.
+2. Render Dashboard → **New** → **Blueprint** → подключить GitHub → выбрать репозиторий **Oblako**.
+3. Branch: **init**. Render находит `render.yaml` и показывает, что будет создано: web service `crm` и PostgreSQL `crm-db`.
+4. `DROPBOX_APP_KEY` можно оставить пустым → **Apply** (или **Deploy Blueprint**).
+5. Дождаться статуса **Live** у сервиса `crm` (первая сборка идёт несколько минут; ход сборки виден в **Logs**).
 
-(имя приложения должно быть уникальным во всём Heroku)
-
-Что выполняет скрипт:
-
-```bash
-heroku create crm-ivanov                                     # приложение + git remote "heroku"
-heroku addons:create heroku-postgresql:essential-0 --wait           # БД, задаёт DATABASE_URL
-heroku config:set DJANGO_SECRET_KEY=<случайный> DJANGO_DEBUG=0 \
-                  DJANGO_ALLOWED_HOSTS=.herokuapp.com \
-                  DJANGO_CSRF_TRUSTED_ORIGINS='https://*.herokuapp.com'
-heroku labs:enable runtime-dyno-metadata                            # номер релиза в приложении
-git push heroku HEAD:main                                           # сборка и релиз
-heroku run python manage.py loaddata docker/sqlite_dump.json        # данные CRM (--load-data)
-```
-
-Результат: `https://crm-ivanov-1a2b3c4d5e6f.herokuapp.com/`, где `/` показывает JSON с `app_version: "1.0"` и `heroku_release`, `/nariad/` — CRM, `/dropbox/` — раздел ЛР4.
+Результат: `https://crm-xxxx.onrender.com/`:
+- `/` — JSON: `app_version: "1.0"`, `release` (коммит), `web_container` (ID инстанса), данные из БД (`nariad_count: 2`);
+- `/nariad/` — CRM;
+- `/dropbox/` — раздел ЛР4.
 
 ### 4. Изменение кода и повторный деплой
 
 ```bash
-# поменять версию в crm/settings.py: APP_VERSION = '1.1'
+# в crm/settings.py: APP_VERSION = '1.1'
 git add crm/settings.py
 git commit -m "Версия 1.1"
-git push heroku HEAD:main        # или снова ./deploy/heroku.sh crm-ivanov
+git push Oblako init
 ```
 
-На `/` теперь `app_version: "1.1"`, номер `heroku_release` увеличился (например, `v6` → `v7`).
+Render замечает новый коммит в ветке `init` и сам пересобирает и перезапускает сервис (Auto-Deploy). После статуса **Live** на `/` будет `app_version: "1.1"`, а `release` сменится на новый коммит. История деплоев — вкладка **Events**.
 
-### 5. Дополнительные возможности Heroku
+### 5. Дополнительные возможности Render и Git
 
-```bash
-heroku logs --tail                  # логи приложения в реальном времени
-heroku ps                           # запущенные dyno
-heroku ps:scale web=2               # горизонтальное масштабирование (не на Eco)
-heroku releases                     # история релизов
-heroku rollback v6                  # откат на предыдущий релиз
-heroku config                       # переменные окружения
-heroku run python manage.py createsuperuser
-heroku pg:info                      # состояние БД
-heroku pg:psql                      # консоль PostgreSQL
-heroku open                         # открыть сайт в браузере
-```
+| Возможность | Где |
+|---|---|
+| Логи сборки и работы в реальном времени | сервис → **Logs** |
+| История деплоев, ручной деплой, откат к прошлому деплою | **Events** → **Rollback**; **Manual Deploy** → *Deploy latest commit* / *Clear build cache & deploy* |
+| Переменные окружения | **Environment** |
+| Метрики CPU / памяти / запросов | **Metrics** |
+| Свой домен с бесплатным HTTPS | **Settings** → **Custom Domains** |
+| Состояние БД, строки подключения | `crm-db` → **Info** (Internal/External Database URL) |
+| Подключиться к БД с компьютера | `psql <External Database URL>` |
+| Отключить автодеплой | **Settings** → **Auto-Deploy** |
 
-Git: `git log --oneline` (история), `git remote -v` (remote `heroku` рядом с `Oblako`), `git push heroku HEAD:main` (деплой — это просто push).
+Git: `git log --oneline` (история), `git remote -v` (remote `Oblako` на GitHub), `git push Oblako init` (деплой — это просто push).
 
-## Проверка без Heroku (локально)
+Ограничения бесплатного тарифа: сервис засыпает после 15 минут без запросов, и первый запрос после этого идёт ~1 минуту. Бесплатная БД удаляется через 30 дней.
 
-Приложение запущено в Docker в тех же условиях, что на Heroku: БД только через `DATABASE_URL`, порт из `$PORT=9300`, `DJANGO_DEBUG=0`, команды взяты из `Procfile`:
+## Проверка без Render (локально)
+
+Сборка и запуск выполнены в чистом `python:3.12-slim` (без Dockerfile проекта), с пустой PostgreSQL и переменными как в `render.yaml`. Команды взяты прямо из `render.yaml`:
 
 | Проверка | Результат |
 |---|---|
-| `release:` (`migrate`) | `No migrations to apply` — подключение по `DATABASE_URL` работает |
-| `web:` (gunicorn) | `Listening at: http://0.0.0.0:9300` — порт взят из `$PORT` |
-| `GET /` | `app_version: 1.0`, `heroku_release: v7`, `web_container: web.1` |
-| `GET /nariad/` | 200 |
-| `GET /static/css/styles.css` при `DEBUG=0` | 200 (WhiteNoise) |
-| запрос с чужим `Host` | 400 (`ALLOWED_HOSTS` работает) |
+| `buildCommand` | зависимости установлены, `129 static files copied` |
+| `startCommand`, первый запуск | все миграции применены, `БД пустая — загружаю docker/sqlite_dump.json`, `Installed 21 object(s)` |
+| gunicorn | `Listening at: http://0.0.0.0:10000`, 2 воркера (`WEB_CONCURRENCY=2`) |
+| `GET /` | `release: abc1234`, `web_container: srv-crm-abcde`, `nariad_count: 2` |
+| `GET /nariad/`, `/static/css/styles.css` при `DEBUG=0` | 200, 200 |
+| перезапуск (= новый деплой) | `No migrations to apply`, повторной загрузки данных нет, `nariad_count: 2` |
 
-Тесты раздела Dropbox (16 шт.) после изменений тоже проходят.
+Подготовка к Heroku ([Procfile](Procfile), [deploy/heroku.sh](deploy/heroku.sh)) тоже осталась в проекте: после верификации аккаунта Heroku деплой туда делается командой `./deploy/heroku.sh <имя> --load-data`.
 
 ## Все порты проекта
 
@@ -122,24 +121,15 @@ Git: `git log --oneline` (история), `git remote -v` (remote `heroku` ря
 | `SWARM_HTTP_PORT` | `.env` или окружение | сайт Swarm-фермы ЛР3 | 80 |
 | `REGISTRY_PORT` | `.env` или окружение | локальный registry ЛР3 | 5000 |
 | `SSH_PORT` | окружение для `deploy.sh` | SSH сервера | 22 |
-| `$PORT` | выдаёт Heroku | порт приложения на Heroku | — |
+| `$PORT` | выдаёт платформа (Render — 10000) | порт приложения на PaaS | — |
 
 Внутренние порты (PostgreSQL 5432 внутри сети Docker, служебные порты Swarm 2377/7946/4789) порты хоста не занимают.
 
 Перед запуском `deploy.sh` проверяет на сервере, свободны ли `WEB_PORT` и `DB_PORT` (то же вручную: `./deploy/ports.sh`). Если порт занят чужим процессом, деплой останавливается и показывает, какой именно. Порты сам он не меняет.
 
-Пример выкладки на выделенные порты:
-
-```bash
-./deploy/deploy.sh user@server --port 18080 --db-port 15432 --load-data
-SWARM_HTTP_PORT=18081 REGISTRY_PORT=15000 ./swarm/cluster.sh up
-```
-
-Swarm-ферма проверена на нестандартных портах: `SWARM_HTTP_PORT=8088 REGISTRY_PORT=5055` → сайт фермы отвечает на `http://localhost:8088/`.
-
 ## Ответы на контрольные вопросы
 
-1. **Почему Agile становится популярнее?** Результат виден после каждой короткой итерации, требования можно менять по ходу, ошибки находятся рано, заказчик постоянно вовлечён. Это снижает риск сделать «не то».
-2. **Преимущества PaaS перед IaaS.** Не нужно администрировать ОС, веб-сервер, обновления, балансировку и БД: платформа делает это сама. Разработчик отвечает только за код и конфигурацию, деплой занимает одну команду, масштабирование — одну настройку.
-3. **add, commit, push.** `add` — добавить изменения в индекс (подготовить к фиксации); `commit` — зафиксировать проиндексированные изменения в локальной истории; `push` — отправить коммиты в удалённый репозиторий (в Heroku `push` ещё и запускает сборку и деплой).
-4. **Heroku против локального окружения.** Приложение сразу доступно из интернета по https, есть готовые управляемые сервисы (Postgres, логи, метрики), релизы с откатом, масштабирование dyno, одинаковое окружение для всех разработчиков, не нужно держать включённый компьютер.
+1. **Почему Agile становится популярнее?** Результат виден после каждой короткой итерации, требования можно менять по ходу, ошибки находятся рано, заказчик постоянно вовлечён. Это снижает риск сделать «не то». PaaS с автодеплоем по `git push` хорошо поддерживает такой цикл: каждая итерация сразу доступна заказчику.
+2. **Преимущества PaaS перед IaaS.** Не нужно администрировать ОС, веб-сервер, обновления, балансировку, сертификаты и БД: платформа делает это сама. Разработчик отвечает только за код и конфигурацию (`render.yaml`), деплой — это `git push`, масштабирование — одна настройка.
+3. **add, commit, push.** `add` — добавить изменения в индекс (подготовить к фиксации); `commit` — зафиксировать проиндексированные изменения в локальной истории; `push` — отправить коммиты в удалённый репозиторий (здесь `push` в GitHub ещё и запускает сборку и деплой на Render).
+4. **PaaS против локального окружения.** Приложение сразу доступно из интернета по https, есть готовые управляемые сервисы (PostgreSQL, логи, метрики), история деплоев с откатом, одинаковое окружение для всех разработчиков, не нужно держать включённый компьютер.

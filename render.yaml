@@ -1,0 +1,42 @@
+# Render Blueprint (ЛР5): сайт CRM + PostgreSQL на бесплатном тарифе.
+# Render → New → Blueprint → репозиторий → Apply. Новый push в ветку = новый деплой.
+services:
+  - type: web
+    name: crm
+    runtime: python
+    plan: free
+    branch: init
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    # На бесплатном тарифе нет pre-deploy команд — миграции делает стартовый скрипт
+    startCommand: bash deploy/render_start.sh
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crm-db
+          property: connectionString
+      # Внутренняя сеть Render: без обязательного SSL (sslmode=prefer)
+      - key: DB_SSL
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: .onrender.com
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: https://*.onrender.com
+      # Бесплатный инстанс — 512 МБ, gunicorn берёт число воркеров отсюда
+      - key: WEB_CONCURRENCY
+        value: "2"
+      # Загрузить данные CRM из docker/sqlite_dump.json, если БД пустая
+      - key: LOAD_INITIAL_DATA
+        value: "1"
+      # Задаётся вручную в Dashboard (ЛР4), можно оставить пустым
+      - key: DROPBOX_APP_KEY
+        sync: false
+
+databases:
+  - name: crm-db
+    plan: free
+    databaseName: crm
+    user: crm
