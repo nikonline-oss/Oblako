@@ -33,4 +33,5 @@ urlpatterns = [
     path('products/', include('products.urls')),
     path('brigadiers/', include('brigadiers.urls')),
     path('nariad/', include('nariad.urls')),
+    path('dropbox/', include('cloud_storage.urls')),
 ]

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Dropbox — подключение{% endblock %}
+{% block content %}
+<h4>Подключение Dropbox</h4>
+{% include 'cloud_storage/_nav.html' %}
+
+{% if env_configured %}
+  <div class="card-panel blue lighten-4">Токен Dropbox задан в переменных окружения (<code>DROPBOX_ACCESS_TOKEN</code> / <code>DROPBOX_REFRESH_TOKEN</code>), подключение из интерфейса не требуется.</div>
+  <a href="{% url 'cloud_storage:browse' %}" class="btn blue">Открыть файлы</a>
+{% elif not app_key %}
+  <div class="card-panel orange lighten-4">
+    <p><b>Не задан <code>DROPBOX_APP_KEY</code>.</b></p>
+    <ol>
+      <li>Создайте приложение на <a href="https://www.dropbox.com/developers/apps" target="_blank" rel="noopener">dropbox.com/developers/apps</a> (Scoped access, Full Dropbox).</li>
+      <li>На вкладке <b>Permissions</b> включите: account_info.read, files.metadata.read/write, files.content.read/write, sharing.read/write — и нажмите Submit.</li>
+      <li>Пропишите App key в <code>.env</code> (<code>DROPBOX_APP_KEY=...</code>) и перезапустите: <code>docker compose up -d</code>.</li>
+    </ol>
+  </div>
+{% else %}
+  {% if credential %}
+    <div class="card-panel green lighten-4">
+      Подключён аккаунт <b>{{ credential.account_name }}</b> ({{ credential.connected_at|date:"d.m.Y H:i" }}).
+      <form action="{% url 'cloud_storage:disconnect' %}" method="post" style="display:inline;">{% csrf_token %}
+        <button class="btn-small red" style="margin-left:12px;">Отключить</button>
+      </form>
+    </div>
+  {% endif %}
+  <div class="card"><div class="card-content">
+    <span class="card-title">{% if credential %}Переподключить{% else %}Подключить{% endif %} аккаунт</span>
+    <ol>
+      <li><a href="{{ authorize_url }}" target="_blank" rel="noopener" class="btn blue">Открыть страницу разрешения Dropbox</a></li>
+      <li style="margin-top:12px;">Нажмите «Разрешить» и скопируйте показанный код.</li>
+      <li>
+        <form method="post" style="display:flex; gap:8px; align-items:center; max-width:600px;">{% csrf_token %}
+          <input type="text" name="code" placeholder="Код авторизации" required style="margin:0;">
+          <button class="btn green" type="submit">Подключить</button>
+        </form>
+      </li>
+    </ol>
+  </div></div>
+{% endif %}
+{% endblock %}

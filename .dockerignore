@@ -8,3 +8,5 @@ staticfiles
 SN
 *.md
 docker-compose.yml
+.env.*
+!.env.example

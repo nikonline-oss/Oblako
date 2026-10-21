@@ -1,0 +1,5 @@
+<p class="dbx-crumbs">
+  {% for c in crumbs %}
+    {% if not forloop.last %}<a href="{% url 'cloud_storage:browse' %}{% if c.path %}?path={{ c.path|urlencode }}{% endif %}">{{ c.name }}</a> / {% else %}<b>{{ c.name }}</b>{% endif %}
+  {% endfor %}
+</p>

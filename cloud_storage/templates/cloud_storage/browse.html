@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Dropbox{% endblock %}
+{% block content %}
+<h4>Облачное хранилище Dropbox</h4>
+{% include 'cloud_storage/_nav.html' %}
+
+<div class="card"><div class="card-content">
+  <span class="card-title">{{ account.name.display_name }} <small class="grey-text">{{ account.email }}</small></span>
+  {% include 'cloud_storage/_space.html' %}
+</div></div>
+
+{% include 'cloud_storage/_crumbs.html' %}
+
+<div class="row">
+  <form class="col s12 m6" action="{% url 'cloud_storage:create_folder' %}" method="post">{% csrf_token %}
+    <input type="hidden" name="path" value="{{ path }}">
+    <div style="display:flex; gap:8px; align-items:center;">
+      <input type="text" name="name" placeholder="Имя новой папки" required style="margin:0;">
+      <button class="btn blue" type="submit"><i class="material-icons left">create_new_folder</i>Создать</button>
+    </div>
+  </form>
+  <form class="col s12 m6" action="{% url 'cloud_storage:upload' %}" method="post" enctype="multipart/form-data">{% csrf_token %}
+    <input type="hidden" name="path" value="{{ path }}">
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <input type="file" name="file" multiple required>
+      <label><input type="checkbox" name="replace" class="filled-in"><span>Заменить существующие</span></label>
+      <button class="btn green" type="submit"><i class="material-icons left">file_upload</i>Загрузить</button>
+    </div>
+  </form>
+</div>
+
+{% include 'cloud_storage/_entries.html' %}
+{% endblock %}

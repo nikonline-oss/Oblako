@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Dropbox — {{ item.name }}{% endblock %}
+{% block content %}
+<h4>{% if item.is_folder %}Папка{% else %}Файл{% endif %} «{{ item.name }}»</h4>
+{% include 'cloud_storage/_nav.html' %}
+{% include 'cloud_storage/_crumbs.html' %}
+
+<div class="card"><div class="card-content">
+  <span class="card-title">Подробная информация</span>
+  <table>{% for label, value in details %}<tr><th style="width:260px;">{{ label }}</th><td style="word-break:break-all;">{{ value }}</td></tr>{% endfor %}</table>
+</div>
+<div class="card-action">
+  {% if item.is_folder %}
+    <a href="{% url 'cloud_storage:browse' %}?path={{ item.path|urlencode }}" class="btn blue"><i class="material-icons left">folder_open</i>Открыть</a>
+  {% endif %}
+  <a href="{% url 'cloud_storage:download' %}?path={{ item.path|urlencode }}" class="btn teal"><i class="material-icons left">file_download</i>Скачать{% if item.is_folder %} ZIP{% endif %}</a>
+  <form action="{% url 'cloud_storage:share' %}" method="post" style="display:inline;">{% csrf_token %}
+    <input type="hidden" name="path" value="{{ item.path }}">
+    <button class="btn purple"><i class="material-icons left">share</i>Поделиться</button>
+  </form>
+  <form action="{% url 'cloud_storage:delete' %}" method="post" style="display:inline;" onsubmit="return confirm('Удалить «{{ item.name|escapejs }}»?');">{% csrf_token %}
+    <input type="hidden" name="path" value="{{ item.path }}">
+    <button class="btn red"><i class="material-icons left">delete</i>Удалить</button>
+  </form>
+</div></div>
+
+{% if links %}
+<div class="card"><div class="card-content">
+  <span class="card-title">Ссылки для общего доступа</span>
+  {% for link in links %}
+    <p><a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.url }}</a></p>
+  {% endfor %}
+</div></div>
+{% endif %}
+
+<div class="card"><div class="card-content">
+  <span class="card-title">Переместить / переименовать / копировать</span>
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="path" value="{{ item.path }}">
+    <div class="row" style="margin-bottom:0;">
+      <div class="col s12 m6">
+        <label>Целевая папка</label>
+        <select name="to_folder" class="browser-default">
+          {% for f in folders %}<option value="{{ f }}" {% if f == item.parent %}selected{% endif %}>{{ f|default:"/ (корень)" }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col s12 m6">
+        <label>Новое имя</label>
+        <input type="text" name="new_name" value="{{ item.name }}">
+      </div>
+    </div>
+    <button class="btn orange" formaction="{% url 'cloud_storage:move' %}"><i class="material-icons left">drive_file_move</i>Переместить</button>
+    <button class="btn blue" formaction="{% url 'cloud_storage:copy' %}"><i class="material-icons left">content_copy</i>Копировать</button>
+  </form>
+</div></div>
+{% endblock %}

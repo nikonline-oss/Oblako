@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Dropbox — аккаунт{% endblock %}
+{% block content %}
+<h4>Аккаунт Dropbox</h4>
+{% include 'cloud_storage/_nav.html' %}
+<div class="card"><div class="card-content">
+  {% if acc.profile_photo_url %}<img src="{{ acc.profile_photo_url }}" alt="" class="circle right" style="width:72px;">{% endif %}
+  <span class="card-title">{{ acc.name.display_name }}</span>
+  <table>
+    <tr><th>ID аккаунта</th><td>{{ acc.account_id }}</td></tr>
+    <tr><th>Имя / фамилия</th><td>{{ acc.name.given_name }} {{ acc.name.surname }}</td></tr>
+    <tr><th>Сокращённое имя</th><td>{{ acc.name.abbreviated_name }}</td></tr>
+    <tr><th>E-mail</th><td>{{ acc.email }} {% if acc.email_verified %}<span class="green-text">(подтверждён)</span>{% else %}<span class="red-text">(не подтверждён)</span>{% endif %}</td></tr>
+    <tr><th>Тип аккаунта</th><td>{{ account_type }}</td></tr>
+    <tr><th>Страна</th><td>{{ acc.country|default:"—" }}</td></tr>
+    <tr><th>Язык</th><td>{{ acc.locale }}</td></tr>
+    <tr><th>Команда</th><td>{{ acc.team.name|default:"—" }}</td></tr>
+    <tr><th>Связан с рабочим аккаунтом</th><td>{{ acc.is_paired|yesno:"да,нет" }}</td></tr>
+    <tr><th>Отключён</th><td>{{ acc.disabled|yesno:"да,нет" }}</td></tr>
+    <tr><th>Реферальная ссылка</th><td><a href="{{ acc.referral_link }}" target="_blank" rel="noopener">{{ acc.referral_link }}</a></td></tr>
+    {% if credential %}<tr><th>Подключён к CRM</th><td>{{ credential.connected_at|date:"d.m.Y H:i" }}</td></tr>{% endif %}
+  </table>
+</div></div>
+<div class="card"><div class="card-content">
+  <span class="card-title">Место в хранилище</span>
+  {% include 'cloud_storage/_space.html' %}
+  <table>
+    <tr><th>Всего</th><td>{{ space.allocated|filesizeformat }} ({{ space.allocated }} байт)</td></tr>
+    <tr><th>Занято</th><td>{{ space.used|filesizeformat }} ({{ space.used }} байт)</td></tr>
+    <tr><th>Свободно</th><td>{{ space.free|filesizeformat }} ({{ space.free }} байт)</td></tr>
+  </table>
+</div></div>
+{% endblock %}

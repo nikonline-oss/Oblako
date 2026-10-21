@@ -31,6 +31,9 @@ DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Нужен, если сайт открывают по https или через прокси: http://1.2.3.4:8080,https://crm.example.com
+CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o]
+
 
 # Application definition
 
@@ -52,6 +55,7 @@ INSTALLED_APPS = [
     'proxies',
     'brigadiers',
     'nariad',
+    'cloud_storage',
 ]
 
 MIDDLEWARE = [

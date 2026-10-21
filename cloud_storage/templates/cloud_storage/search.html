@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Dropbox — поиск{% endblock %}
+{% block content %}
+<h4>Поиск</h4>
+{% include 'cloud_storage/_nav.html' %}
+<form method="get" class="card-panel white">
+  <div class="row" style="margin-bottom:0;">
+    <div class="col s12 m5"><label>Что искать</label><input type="text" name="q" value="{{ query }}" required></div>
+    <div class="col s12 m4"><label>В папке (пусто — везде)</label><input type="text" name="path" value="{{ path }}" placeholder="/Документы"></div>
+    <div class="col s12 m3" style="padding-top:24px;">
+      <label><input type="checkbox" name="content" class="filled-in" {% if by_content %}checked{% endif %}><span>Искать и в содержимом</span></label>
+    </div>
+  </div>
+  <button class="btn blue" type="submit"><i class="material-icons left">search</i>Найти</button>
+</form>
+{% if query %}
+  <p>Найдено: <b>{{ results|length }}</b></p>
+  {% include 'cloud_storage/_entries.html' with entries=results show_path=True empty_text="Ничего не найдено" %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Dropbox — общие ссылки{% endblock %}
+{% block content %}
+<h4>Общие ссылки</h4>
+{% include 'cloud_storage/_nav.html' %}
+<table class="highlight">
+  <thead><tr><th>Имя</th><th>Ссылка</th><th>Доступ</th><th>Истекает</th><th></th></tr></thead>
+  <tbody>
+  {% for l in links %}
+    <tr>
+      <td>
+        <i class="material-icons tiny {% if l.is_folder %}amber-text{% else %}grey-text{% endif %}">{% if l.is_folder %}folder{% else %}insert_drive_file{% endif %}</i>
+        {% if l.path %}<a href="{% url 'cloud_storage:metadata' %}?path={{ l.path|urlencode }}">{{ l.name }}</a><br><small class="grey-text">{{ l.path }}</small>{% else %}{{ l.name }}{% endif %}
+      </td>
+      <td style="word-break:break-all;"><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.url }}</a></td>
+      <td>{{ l.visibility }}</td>
+      <td>{{ l.expires|date:"d.m.Y H:i"|default:"—" }}</td>
+      <td>
+        <form action="{% url 'cloud_storage:revoke' %}" method="post" onsubmit="return confirm('Отключить доступ по ссылке?');">{% csrf_token %}
+          <input type="hidden" name="url" value="{{ l.url }}">
+          <button class="btn-small red" title="Отключить ссылку"><i class="material-icons">link_off</i></button>
+        </form>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="grey-text">Нет общих ссылок</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

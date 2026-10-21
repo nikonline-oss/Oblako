@@ -47,7 +47,7 @@ services:
       <<: *web-env
       RUN_MIGRATIONS: "0"
     ports:
-      - "80:8000"
+      - "${WEB_PORT:-80}:8000"
     networks:
       - backend
     healthcheck:

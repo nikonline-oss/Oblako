@@ -1,0 +1,7 @@
+<p style="margin-bottom:4px;">
+  Занято <b>{{ space.used|filesizeformat }}</b> из <b>{{ space.allocated|filesizeformat }}</b>
+  ({{ space.percent }}%) · свободно <b>{{ space.free|filesizeformat }}</b>
+</p>
+<div class="progress blue lighten-4" style="height:8px;">
+  <div class="determinate blue" style="width: {{ space.percent|stringformat:'s' }}%"></div>
+</div>

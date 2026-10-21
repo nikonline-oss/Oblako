@@ -1,0 +1,17 @@
+<div class="dbx-tabs" style="margin-bottom:16px;">
+  <a href="{% url 'cloud_storage:browse' %}" class="btn-flat blue-text"><i class="material-icons left">folder</i>Файлы</a>
+  <a href="{% url 'cloud_storage:account' %}" class="btn-flat blue-text"><i class="material-icons left">person</i>Аккаунт</a>
+  <a href="{% url 'cloud_storage:shared' %}" class="btn-flat blue-text"><i class="material-icons left">link</i>Общие ссылки</a>
+  <a href="{% url 'cloud_storage:connect' %}" class="btn-flat blue-text"><i class="material-icons left">settings</i>Подключение</a>
+  <form action="{% url 'cloud_storage:search' %}" method="get" style="display:inline-flex; gap:8px; align-items:center; float:right;">
+    <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Поиск в Dropbox" style="width:220px; margin:0;">
+    <button class="btn-small blue" type="submit"><i class="material-icons">search</i></button>
+  </form>
+</div>
+{% if messages %}
+  {% for message in messages %}
+  <div class="card-panel {% if message.tags == 'error' %}red lighten-4 red-text text-darken-4{% elif message.tags == 'success' %}green lighten-4 green-text text-darken-4{% else %}blue lighten-4 blue-text text-darken-4{% endif %}" style="word-break:break-all;">
+    {{ message }}
+  </div>
+  {% endfor %}
+{% endif %}
