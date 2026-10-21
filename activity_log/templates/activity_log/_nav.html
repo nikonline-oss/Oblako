@@ -1,5 +1,11 @@
 <div style="margin-bottom:16px;">
+  <a href="{% url 'activity_log:series' %}" class="btn-flat blue-text"><i class="material-icons left">movie</i>Сериалы (CRUD)</a>
   <a href="{% url 'activity_log:journal' %}" class="btn-flat blue-text"><i class="material-icons left">history</i>Журнал</a>
   <a href="{% url 'activity_log:stats' %}" class="btn-flat blue-text"><i class="material-icons left">insights</i>Статистика</a>
-  <span class="grey-text right" style="line-height:36px;">MongoDB · коллекция <code>activity</code></span>
+  <span class="grey-text right" style="line-height:36px;">MongoDB · ЛР6</span>
 </div>
+{% if messages %}
+  {% for message in messages %}
+  <div class="card-panel {% if message.tags == 'error' %}red lighten-4 red-text text-darken-4{% else %}green lighten-4 green-text text-darken-4{% endif %}" style="word-break:break-all;">{{ message }}</div>
+  {% endfor %}
+{% endif %}

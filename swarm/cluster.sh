@@ -23,10 +23,12 @@ REGISTRY_PORT=${REGISTRY_PORT:-$(from_env REGISTRY_PORT)}
 REGISTRY_PORT=${REGISTRY_PORT:-5000}
 
 up() {
+  # Остатки прошлой фермы (например, остановленные после перезагрузки) — убираем
+  down >/dev/null 2>&1
   docker network inspect $NET >/dev/null 2>&1 || docker network create $NET
 
   # Локальный registry — аналог DockerHub, из него узлы скачивают образ приложения
-  docker run -d --name registry --network $NET -p "$REGISTRY_PORT":5000 registry:2
+  docker run -d --name registry --network $NET -p "127.0.0.1:$REGISTRY_PORT":5000 registry:2
 
   docker run -d --privileged --name manager --hostname manager --network $NET \
     -e DOCKER_TLS_CERTDIR= -p "$SWARM_HTTP_PORT":80 $DIND --insecure-registry registry:5000

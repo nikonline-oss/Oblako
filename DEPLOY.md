@@ -1,15 +1,17 @@
-# Развёртывание CRM на удалённом сервере
+# Развёртывание проекта на удалённом сервере
 
-CRM запускается на сервере тремя контейнерами Docker:
+Весь проект (все лабы) запускается одной командой `./project.sh up` из одного [docker-compose.yml](docker-compose.yml) с одним файлом настроек `.env`:
 
 ```
-браузер ──WEB_PORT──▶ web (Django + gunicorn) ──▶ db (PostgreSQL 17, том pgdata)
-                              │                      └── DB_PORT (по умолчанию только 127.0.0.1)
-                              └──────────────────▶ mongo (MongoDB 4.4, журнал действий, том mongodata)
-                                                     └── наружу не публикуется, порт не нужен
+                ┌── WEB_PORT ──▶ web (CRM: Django + gunicorn) ──┬──▶ db    (PostgreSQL 17)
+браузер ────────┤                                               └──▶ mongo (MongoDB 4.4, ЛР6)
+                ├── WP_PORT ───▶ wordpress ──┐
+                └── PMA_PORT ──▶ phpmyadmin ─┴──────────────────────▶ wp-db (MySQL 8.4)
 ```
 
-Все порты и пароли задаются в файле `.env`. Ниже два способа выкладки: **А** — одной командой со своего компьютера, **Б** — вручную на сервере через `git clone`. Выберите один.
+Наружу открыты только **3 порта**. PostgreSQL, MongoDB и MySQL работают во внутренних сетях Docker и порты сервера не занимают. При необходимости их можно открыть (п. 5).
+
+Что делать — ниже. Как показывать каждую лабу — в [LABS.md](LABS.md).
 
 ---
 
@@ -17,15 +19,13 @@ CRM запускается на сервере тремя контейнерам
 
 | Что | Пример | Куда пойдёт |
 |---|---|---|
-| Адрес сервера | `192.168.10.5` | `user@адрес` в командах, `DJANGO_ALLOWED_HOSTS` |
+| Адрес сервера | `192.168.10.5` | `user@адрес` в командах, `PUBLIC_HOST` |
 | Логин SSH (и пароль или ключ) | `student05` | `user@адрес` |
 | Порт SSH, если не 22 | `2222` | `SSH_PORT` |
-| **Порт для сайта** | `18080` | `WEB_PORT` |
-| **Порт для БД** | `15432` | `DB_PORT` |
-| Ещё порты, если на сервере нужны ЛР6/ЛР7 | 1 для MongoDB, 2 для WordPress | см. п. 7б |
-| Есть ли на сервере Docker и права на него | `docker ps` работает без `sudo` | — |
+| **3 порта**: CRM, WordPress, phpMyAdmin | `18080`, `18081`, `18082` | `WEB_PORT`, `WP_PORT`, `PMA_PORT` |
+| Можно ли `docker` без `sudo` | `docker ps` работает | — |
 
-Если БД снаружи не нужна, порт для неё всё равно нужен: он открыт только на `127.0.0.1` сервера, но на сервере не должен быть занят (там часто уже работает свой PostgreSQL на 5432).
+Ещё 2 порта нужны, только если на сервере показывать Swarm-ферму ЛР3 (п. 7). Тогда понадобятся ещё права на `--privileged`-контейнеры.
 
 Проверить доступ:
 
@@ -45,88 +45,87 @@ curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER
 
 ## 1. Настройки сервера: `.env.server`
 
-В папке проекта на своём компьютере скопируйте пример:
+На своём компьютере, в папке проекта:
 
 ```bash
 cp .env.example .env.server
 ```
 
-и поменяйте в `.env.server`:
+В `.env.server` достаточно поменять:
 
 ```ini
-WEB_PORT=18080                      # порт сайта, выданный преподавателем
-DB_PORT=15432                       # порт БД, выданный преподавателем
-DB_BIND=127.0.0.1                   # 0.0.0.0 — если БД нужна снаружи
+PUBLIC_HOST=192.168.10.5     # адрес сервера (как его открывают в браузере)
+WEB_PORT=18080               # выданные порты
+WP_PORT=18081
+PMA_PORT=18082
+PMA_BIND=0.0.0.0             # чтобы phpMyAdmin открывался с компьютера (иначе только с сервера)
 
-POSTGRES_PASSWORD=придумайте_пароль
-DJANGO_SECRET_KEY=длинная_случайная_строка
-DJANGO_DEBUG=0
-DJANGO_ALLOWED_HOSTS=192.168.10.5   # адрес/домен сервера, через запятую
-
-DROPBOX_APP_KEY=...                 # ЛР4, можно оставить пустым
+DROPBOX_APP_KEY=...          # ЛР4, можно оставить пустым
+MAP_LL=долгота,широта        # точка на карте WordPress (ЛР7)
 ```
 
-Случайную строку для ключа можно получить так: `openssl rand -hex 32`.
+Пароли и ключи (`POSTGRES_PASSWORD`, `DJANGO_SECRET_KEY`, `MYSQL_*`, `WP_ADMIN_PASSWORD`) оставьте **пустыми**. Сервер сгенерирует их при первом запуске и запишет в свой `.env`, а при следующих деплоях они сохранятся.
 
-> **Пароль БД задаётся один раз.** PostgreSQL запоминает его при первом запуске (в томе `pgdata`). Если потом поменять `POSTGRES_PASSWORD` в `.env`, сайт перестанет подключаться к БД. Поэтому придумайте пароль **до** первого деплоя.
-
-`.env.server` не попадает в git (он в `.gitignore`), пароли в репозиторий не утекут.
+`.env.server` не попадает в git.
 
 ---
 
 ## 2А. Выкладка одной командой (с компьютера)
 
-Нужны: Git Bash (на Windows), доступ к серверу по SSH.
+Нужны Git Bash (на Windows) и доступ к серверу по SSH.
 
-**Один раз — вход по ключу**, чтобы не вводить пароль много раз подряд:
+**Один раз — вход по ключу:**
 
 ```bash
-ssh-keygen -t ed25519            # если ключа ещё нет (Enter на все вопросы)
+ssh-keygen -t ed25519                          # если ключа ещё нет (Enter на все вопросы)
 ssh-copy-id -p 22 student05@192.168.10.5
 ```
 
-Если `ssh-copy-id` нет:
+**Деплой** (из папки проекта):
 
 ```bash
-cat ~/.ssh/id_ed25519.pub | ssh -p 22 student05@192.168.10.5 "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+./deploy/deploy.sh student05@192.168.10.5
 ```
 
-**Деплой** (из папки `crm`, в Git Bash):
-
-```bash
-./deploy/deploy.sh student05@192.168.10.5 --load-data
-```
-
-- `--load-data` — загрузить данные CRM (наряды, сотрудники…). Только при **первом** деплое.
 - SSH не на 22 порту: `SSH_PORT=2222 ./deploy/deploy.sh ...`
-- Другой ключ: `SSH_OPTS="-i ~/.ssh/my_key" ./deploy/deploy.sh ...`
-- Другой каталог на сервере (по умолчанию `~/crm`): `--dir labs/crm`
-- Порты можно задать прямо в команде вместо `.env.server`: `--port 18080 --db-port 15432`
+- другой ключ: `SSH_OPTS="-i ~/.ssh/my_key" ./deploy/deploy.sh ...`
+- другой каталог на сервере (по умолчанию `~/crm`): `--dir labs/crm`
+- вместе со Swarm-фермой ЛР3: `--swarm`
 
 Что делает скрипт:
 1. проверяет, что на сервере есть `docker compose`;
-2. копирует файлы проекта в `~/crm` (без `.git`, `.env`, мусора);
-3. копирует `.env.server` → `~/crm/.env` (если `.env.server` нет — оставляет старый `.env` на сервере или создаёт его из `.env.example`);
-4. **проверяет, свободны ли `WEB_PORT` и `DB_PORT`**. Если порт занят чужим процессом, останавливается и пишет, какой;
-5. собирает образ и запускает контейнеры, ждёт, пока они станут `healthy`;
-6. при `--load-data` загружает данные;
-7. печатает адрес сайта.
+2. копирует файлы проекта в `~/crm` (без `.git`, `.env` и мусора);
+3. переносит `.env.server` → `~/crm/.env`. Пустые значения берутся из уже существующего `.env` сервера, так что сгенерированные пароли не теряются;
+4. если `PUBLIC_HOST` не задан, подставляет адрес из `user@адрес`;
+5. запускает на сервере `./project.sh up`:
+   - проверяет, свободны ли порты, и при конфликте останавливается и пишет, какой порт занят;
+   - собирает и запускает контейнеры и ждёт, пока они станут `healthy`;
+   - при первом запуске загружает данные CRM и устанавливает и наполняет WordPress;
+   - печатает адреса всех лаб.
 
-Пример вывода в конце:
+Конец вывода:
 
 ```
-NAME        IMAGE                COMMAND                  SERVICE   STATUS                    PORTS
-crm-db-1    postgres:17-alpine   "docker-entrypoint.s…"   db        Up 30 seconds (healthy)   127.0.0.1:15432->5432/tcp
-crm-web-1   crm-web              "docker/entrypoint.s…"   web       Up 8 seconds (healthy)    0.0.0.0:18080->8000/tcp
+  ЛР2  CRM в Docker            http://192.168.10.5:18080/nariad/
+  ЛР4  Dropbox                 http://192.168.10.5:18080/dropbox/
+  ЛР5  версия/релиз (JSON)     http://192.168.10.5:18080/
+  ЛР6  журнал CRM в MongoDB    http://192.168.10.5:18080/journal/      демо: ./project.sh lab6
+  ЛР7  WordPress               http://192.168.10.5:18081/
+       Консоль WordPress       http://192.168.10.5:18081/wp-admin/
+       phpMyAdmin              http://192.168.10.5:18082/
+```
 
-Готово: http://192.168.10.5:18080/nariad/   Dropbox: http://192.168.10.5:18080/dropbox/
+Логин и пароль WordPress:
+
+```bash
+ssh student05@192.168.10.5 "grep -E '^(WP_ADMIN|MYSQL)_(USER|PASSWORD)=' crm/.env"
 ```
 
 ---
 
 ## 2Б. Выкладка вручную (на сервере)
 
-Если со своего компьютера SSH-скрипт не работает, всё можно сделать прямо на сервере.
+Если SSH-скрипт с компьютера не работает, всё можно сделать на самом сервере.
 
 ```bash
 ssh -p 22 student05@192.168.10.5
@@ -134,181 +133,106 @@ ssh -p 22 student05@192.168.10.5
 git clone -b init https://github.com/nikonline-oss/Oblako.git crm
 cd crm
 cp .env.example .env
-nano .env                                    # те же правки, что в п. 1
-
-./deploy/ports.sh                            # проверка, что порты свободны
-docker compose up -d --build --wait          # сборка и запуск
-docker compose exec -T web python manage.py loaddata docker/sqlite_dump.json   # данные, только первый раз
-docker compose ps
+nano .env                  # PUBLIC_HOST и порты, как в п. 1
+./project.sh up
 ```
-
-Если репозиторий приватный, `git clone` попросит логин и **токен** GitHub (Settings → Developer settings → Personal access tokens), а не пароль.
 
 ---
 
 ## 3. Проверка
 
-Открыть в браузере:
-- `http://АДРЕС:WEB_PORT/nariad/` — CRM;
-- `http://АДРЕС:WEB_PORT/` — JSON с версией приложения и данными из БД;
-- `http://АДРЕС:WEB_PORT/dropbox/` — раздел Dropbox (ЛР4).
-
-Или с сервера:
-
 ```bash
-curl -s http://localhost:18080/ | head
+./project.sh status                  # на сервере: контейнеры + адреса
+./deploy/ports.sh                    # какие порты заняты проектом
 ```
 
-Создать администратора для `/admin/`:
+Открыть в браузере адреса из вывода. Подробный сценарий показа каждой лабы — в [LABS.md](LABS.md).
+
+Администратор CRM для `/admin/`:
 
 ```bash
-cd ~/crm && docker compose exec web python manage.py createsuperuser
+docker compose exec web python manage.py createsuperuser
 ```
 
 ---
 
 ## 4. Обновление после изменений в коде
 
-**Способ А:** закоммитить изменения и повторить ту же команду (без `--load-data`):
+С компьютера (закоммитить изменения не обязательно — копируются файлы как есть):
 
 ```bash
 ./deploy/deploy.sh student05@192.168.10.5
 ```
 
-**Способ Б:** на сервере:
+Или на сервере, если ставили через `git clone`:
 
 ```bash
-cd ~/crm && git pull && docker compose up -d --build --wait
+cd ~/crm && git pull && ./project.sh up
 ```
 
-Данные БД при обновлении сохраняются: они лежат в томе `pgdata`, а не в контейнере.
+Данные всех баз хранятся в томах Docker (`crm_pgdata`, `crm_mongodata`, `crm_wp-dbdata`, `crm_wpdata`) и при обновлении сохраняются. Повторно CRM и WordPress не наполняются.
 
 ---
 
-## 5. Смена портов
+## 5. Порты
 
-- **Способ А:** поменять порт в `.env.server` (или передать `--port N` / `--db-port N`) и снова запустить `deploy.sh`.
-- **Способ Б:** на сервере поменять `WEB_PORT` / `DB_PORT` в `~/crm/.env`, затем:
+Все — в `.env`:
 
-  ```bash
-  ./deploy/ports.sh && docker compose up -d --wait
-  ```
-
-Все порты проекта:
-
-| Переменная | Что это | По умолчанию |
+| Переменная | Что | По умолчанию |
 |---|---|---|
-| `WEB_PORT` | порт сайта на сервере | 8000 |
-| `WEB_BIND` | интерфейс сайта (`127.0.0.1` — только локально, например за nginx) | 0.0.0.0 |
-| `DB_PORT` | порт PostgreSQL на сервере | 5432 |
-| `DB_BIND` | интерфейс БД (`127.0.0.1` — только с самого сервера) | 127.0.0.1 |
-| `APP_PORT` | порт gunicorn внутри контейнера, менять не нужно | 8000 |
-| `SWARM_HTTP_PORT`, `REGISTRY_PORT` | порты Swarm-фермы ЛР3 (см. п. 7) | 80, 5000 |
-| `MONGO_PORT`, `MONGO_BIND` (`lab6_mongodb/.env`) | MongoDB ЛР6 (см. п. 7б) | 27017, 127.0.0.1 |
-| `WP_PORT`, `WP_URL` (`lab7_wordpress/.env`) | сайт WordPress ЛР7 | 8081 |
-| `PMA_PORT`, `PMA_BIND` (`lab7_wordpress/.env`) | phpMyAdmin ЛР7 | 8082, 127.0.0.1 |
+| `PUBLIC_HOST` | адрес, по которому открывают сайты | localhost |
+| `WEB_PORT` / `WEB_BIND` | CRM | 8000 / 0.0.0.0 |
+| `WP_PORT` / `WP_BIND` | WordPress | 8081 / 0.0.0.0 |
+| `PMA_PORT` / `PMA_BIND` | phpMyAdmin (`127.0.0.1` — только с самого сервера) | 8082 / 127.0.0.1 |
+| `COMPOSE_PROFILES=db-ports` | открыть PostgreSQL и MongoDB снаружи (pgAdmin, Compass) | выключено |
+| `DB_PORT` / `DB_BIND` | PostgreSQL при `db-ports` | 5432 / 127.0.0.1 |
+| `MONGO_PORT` / `MONGO_BIND` | MongoDB при `db-ports` | 27017 / 127.0.0.1 |
+| `SWARM_HTTP_PORT`, `REGISTRY_PORT` | Swarm-ферма ЛР3 | 80, 5000 |
+| `APP_PORT` | gunicorn внутри контейнера, менять не нужно | 8000 |
 
-Проверить порты любой лабы на машине: `./deploy/ports.sh` (CRM), `./deploy/ports.sh lab6_mongodb`, `./deploy/ports.sh lab7_wordpress`.
+**Сменить порт:** поменять его в `.env.server` и повторить `./deploy/deploy.sh ...`, либо на сервере поменять в `.env` и выполнить `./project.sh up`. Если поменялся `WP_PORT` или `PUBLIC_HOST`, `project.sh` сам перепишет адреса внутри WordPress.
 
-`DJANGO_ALLOWED_HOSTS` указывается **без порта**: порт можно менять, не трогая его.
+`DJANGO_ALLOWED_HOSTS` трогать не нужно: `PUBLIC_HOST` разрешается автоматически.
 
 ---
 
 ## 6. Управление
 
-Все команды — на сервере, в `~/crm`:
+На сервере, в `~/crm`:
 
 ```bash
-docker compose ps                     # состояние
-docker compose logs -f web            # логи сайта (Ctrl+C — выход)
-docker compose logs db                # логи БД
-docker compose restart web            # перезапуск сайта
-docker compose stop                   # остановить (данные сохраняются)
-docker compose start                  # запустить снова
-docker compose down                   # удалить контейнеры (том pgdata остаётся)
-docker compose down -v                # удалить ВСЁ, включая базу
+./project.sh status                 # состояние + адреса
+./project.sh logs web               # логи (web, db, mongo, wordpress, wp-db, phpmyadmin), Ctrl+C — выход
+./project.sh down                   # остановить всё (данные сохраняются)
+./project.sh up                     # запустить снова
+./project.sh lab6                   # демонстрация ЛР6 в консоли
+./project.sh wp-reset               # собрать сайт WordPress заново (его БД удаляется)
 
-# резервная копия БД и восстановление
-docker compose exec -T db pg_dump -U crm crm > backup.sql
-docker compose exec -T db psql -U crm crm < backup.sql
-
-# консоль БД
-docker compose exec db psql -U crm crm
+# резервные копии
+docker compose exec -T db pg_dump -U crm crm > crm.sql
+docker compose exec -T mongo mongodump --archive > mongo.archive
+docker compose exec -T wp-db sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" wptest' > wordpress.sql
 ```
 
 Контейнеры запущены с `restart: unless-stopped`: после перезагрузки сервера они поднимутся сами.
 
----
-
-## 7. Swarm-ферма ЛР3 на сервере (если нужно показать там)
-
-Нужны ещё 2 порта от преподавателя: для сайта фермы и для registry.
-
-```bash
-cd ~/crm
-SWARM_HTTP_PORT=18081 REGISTRY_PORT=15000 ./swarm/cluster.sh up
-./swarm/cluster.sh status
-./swarm/cluster.sh down               # удалить ферму
-```
-
-Ферма запускает 4 контейнера `docker:dind` в режиме `--privileged`. На общем сервере это может быть запрещено, тогда показывайте ЛР3 на ноутбуке.
+Удалить всё вместе с данными: `docker compose down -v`.
 
 ---
 
-## 7б. ЛР6 (MongoDB) и ЛР7 (WordPress) на сервере
+## 7. Swarm-ферма ЛР3 на сервере
 
-Тот же `deploy.sh` с опцией `--stack`. Настройки каждой лабы лежат в её каталоге: `<лаба>/.env.server` на компьютере копируется в `<лаба>/.env` на сервере.
-
-**ЛР6 — нужен 1 порт** (MongoDB):
+Нужны ещё 2 порта (`SWARM_HTTP_PORT` — сайт фермы, `REGISTRY_PORT` — локальный registry, открыт только на 127.0.0.1) и разрешение запускать `--privileged`-контейнеры.
 
 ```bash
-cp lab6_mongodb/.env.example lab6_mongodb/.env.server     # MONGO_PORT=выданный порт
-./deploy/deploy.sh student05@192.168.10.5 --stack lab6_mongodb
-
-# демонстрация на сервере
-ssh student05@192.168.10.5
-cd ~/crm/lab6_mongodb
-docker compose exec mongo mongo /lab/shell_demo.js
-docker compose run --rm script
+./deploy/deploy.sh student05@192.168.10.5 --swarm
+# или на сервере:
+./project.sh swarm up
+./project.sh swarm status
+./project.sh swarm down
 ```
 
-`MONGO_BIND=127.0.0.1` (по умолчанию) — к базе можно подключиться только с самого сервера; `0.0.0.0` — откуда угодно (без пароля, только на время сдачи).
-
-**ЛР7 — нужно 2 порта** (сайт и phpMyAdmin):
-
-```bash
-cp lab7_wordpress/.env.example lab7_wordpress/.env.server
-```
-
-В `lab7_wordpress/.env.server`:
-
-```ini
-WP_PORT=18081
-WP_URL=http://192.168.10.5:18081      # адрес сайта = адрес сервера + WP_PORT
-PMA_PORT=18082
-PMA_BIND=0.0.0.0                      # чтобы открыть phpMyAdmin с компьютера (иначе только с сервера)
-MAP_LL=долгота,широта                 # точка на Яндекс.Карте
-```
-
-Пароли (`MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `WP_ADMIN_PASSWORD`) можно оставить пустыми: сервер сгенерирует их при первом деплое, а при следующих деплоях они сохранятся.
-
-```bash
-./deploy/deploy.sh student05@192.168.10.5 --stack lab7_wordpress
-ssh student05@192.168.10.5 "grep -E '^WP_ADMIN_(USER|PASSWORD)=' crm/lab7_wordpress/.env"   # вход в /wp-admin/
-```
-
-Скрипт установит WordPress, тему и плагины и наполнит сайт так же, как на ноутбуке.
-
-Сменить порт или адрес сайта потом:
-
-```bash
-ssh student05@192.168.10.5
-cd ~/crm/lab7_wordpress
-sed -i 's/^WP_PORT=.*/WP_PORT=18085/' .env
-./setup.sh url http://192.168.10.5:18085
-```
-
-Все три проекта (CRM, ЛР6, ЛР7) могут работать на одном сервере одновременно, каждый на своих портах.
+Если на общем сервере `--privileged` запрещён, показывайте ЛР3 на ноутбуке.
 
 ---
 
@@ -316,12 +240,12 @@ sed -i 's/^WP_PORT=.*/WP_PORT=18085/' .env
 
 | Симптом | Причина и решение |
 |---|---|
-| `deploy.sh`: `ЗАНЯТ другим процессом` | порт уже кем-то занят. Попросите другой порт и поменяйте `WEB_PORT`/`DB_PORT` |
+| `ЗАНЯТ другим процессом` | порт уже кем-то занят: попросите другой и поменяйте его в `.env.server` / `.env` |
 | `Permission denied (publickey)` | не настроен вход по ключу (п. 2А) или нужен `SSH_OPTS="-i путь_к_ключу"` |
 | `permission denied ... docker.sock` | пользователь не в группе `docker`: `sudo usermod -aG docker $USER` и перезайти; без `sudo` — к преподавателю |
-| В браузере `Bad Request (400)` | адрес сервера не прописан в `DJANGO_ALLOWED_HOSTS` → поправить `.env`, затем `docker compose up -d` |
+| CRM: `Bad Request (400)` | сайт открыт не по `PUBLIC_HOST`: впишите правильный адрес в `.env` и выполните `./project.sh up` |
 | Сайт не открывается извне, а `curl localhost:ПОРТ` на сервере работает | порт закрыт файрволом сервера: `sudo ufw allow 18080/tcp` или к преподавателю |
-| `web` не становится `healthy`, в логах `password authentication failed` | поменяли `POSTGRES_PASSWORD` после первого запуска. Вернуть старый пароль, или `docker compose down -v` (база удалится) и запустить заново с `--load-data` |
-| `Waiting for database...` бесконечно | БД не стартовала: `docker compose logs db` |
-| `CSRF verification failed` при отправке форм | сайт открыт через https или прокси: добавить адрес в `DJANGO_CSRF_TRUSTED_ORIGINS`, например `https://crm.example.com` |
-| Нет стилей на страницах | смотреть `docker compose logs web`: при старте должен пройти `collectstatic` |
+| WordPress: ссылки и картинки ведут на старый адрес | поменялся адрес: проверьте `PUBLIC_HOST`/`WP_PORT` в `.env` и выполните `./project.sh up` — он перепишет адреса |
+| `web` не `healthy`, в логах `password authentication failed` | поменяли `POSTGRES_PASSWORD` после первого запуска. Верните старый пароль, или `docker compose down -v` (базы удалятся) и `./project.sh up` |
+| Ошибка при скачивании плагинов WordPress | сеть оборвалась: просто повторите `./project.sh up`, он продолжит с того же места |
+| `CSRF verification failed` | сайт открыт через https или прокси: добавьте адрес в `DJANGO_CSRF_TRUSTED_ORIGINS`, например `https://crm.example.com` |

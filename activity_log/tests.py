@@ -121,6 +121,97 @@ class ActivityLogTest(TestCase):
         self.assertEqual(response.context['coll_stats']['count'], 3)
 
 
+SERIES_TEST_DB = 'crm_test_series'
+
+
+@unittest.skipUnless(mongo_available(), 'MongoDB недоступна (MONGO_URI)')
+@override_settings(MONGO_DB=TEST_DB, MONGO_SERIES_DB=SERIES_TEST_DB)
+class SeriesCrudTest(TestCase):
+    """CRUD над SeriesDB.series через веб-интерфейс CRM."""
+
+    def setUp(self):
+        from .series import series_collection
+        self.coll = series_collection()
+        self.coll.delete_many({})
+        mongo.collection().delete_many({})
+
+    @classmethod
+    def tearDownClass(cls):
+        client = mongo._client(settings.MONGO_URI)
+        client.drop_database(SERIES_TEST_DB)
+        client.drop_database(TEST_DB)
+        mongo._indexed_databases.discard(TEST_DB)
+        super().tearDownClass()
+
+    def create(self, **data):
+        form = {'name': 'Friends', 'year': '1994', 'genres': 'Комедия, ситком', 'seasons': '10',
+                'rating': '8.9', 'description': '', 'extra': 'страна: США\nсерий: 236\nзавершён: да'}
+        form.update(data)
+        return self.client.post(reverse('activity_log:series_create'), form)
+
+    def test_create_stores_flexible_document(self):
+        response = self.create()
+        self.assertRedirects(response, reverse('activity_log:series'))
+        doc = self.coll.find_one({'name': 'Friends'})
+        self.assertEqual(doc['year'], 1994)
+        self.assertEqual(doc['genres'], ['комедия', 'ситком'])        # массив, в нижнем регистре
+        self.assertEqual((doc['seasons'], doc['rating']), (10, 8.9))
+        self.assertEqual((doc['страна'], doc['серий'], doc['завершён']), ('США', 236, True))
+        self.assertNotIn('description', doc)                          # пустые поля не сохраняются
+        event = mongo.collection().find_one({'model': 'SeriesDB.series', 'action': 'create'})
+        self.assertEqual(event['object_repr'], 'Friends')
+
+    def test_list_filters_search_and_sort(self):
+        self.create()
+        self.create(name='Suits', year='2011', genres='драма', extra='')
+        self.create(name='House of Cards', year='2013', genres='драма, политика', extra='')
+        url = reverse('activity_log:series')
+        names = lambda r: [row['doc']['name'] for row in r.context['rows']]
+        self.assertEqual(names(self.client.get(url)), ['Friends', 'House of Cards', 'Suits'])
+        self.assertEqual(names(self.client.get(url, {'q': 'HOUSE'})), ['House of Cards'])
+        self.assertEqual(names(self.client.get(url, {'genre': 'драма', 'sort': '-year'})), ['House of Cards', 'Suits'])
+        self.assertEqual(names(self.client.get(url, {'year_from': '2000', 'year_to': '2012'})), ['Suits'])
+        self.assertEqual(self.client.get(url).context['genres'], ['драма', 'комедия', 'политика', 'ситком'])
+
+    def test_edit_sets_and_unsets_fields(self):
+        self.create()
+        doc_id = str(self.coll.find_one()['_id'])
+        url = reverse('activity_log:series_edit', args=[doc_id])
+        page = self.client.get(url)
+        self.assertEqual(page.context['form'].initial['genres'], 'комедия, ситком')
+        self.assertIn('страна: США', page.context['form'].initial['extra'])
+
+        self.client.post(url, {'name': 'F.R.I.E.N.D.S', 'year': '1994', 'genres': 'комедия', 'seasons': '',
+                               'rating': '9', 'description': 'Шестеро друзей', 'extra': 'страна: США'})
+        doc = self.coll.find_one()
+        self.assertEqual(doc['name'], 'F.R.I.E.N.D.S')
+        self.assertEqual(doc['genres'], ['комедия'])
+        self.assertNotIn('seasons', doc)                                # $unset
+        self.assertNotIn('серий', doc)
+        self.assertEqual(doc['description'], 'Шестеро друзей')
+        event = mongo.collection().find_one({'action': 'update', 'model': 'SeriesDB.series'})
+        self.assertEqual(event['changes']['name'], {'old': 'Friends', 'new': 'F.R.I.E.N.D.S'})
+        self.assertEqual(event['changes']['seasons'], {'old': 10, 'new': None})
+
+    def test_delete(self):
+        self.create()
+        doc_id = str(self.coll.find_one()['_id'])
+        self.assertEqual(self.client.get(reverse('activity_log:series_delete', args=[doc_id])).status_code, 405)
+        self.client.post(reverse('activity_log:series_delete', args=[doc_id]))
+        self.assertEqual(self.coll.count_documents({}), 0)
+        self.assertTrue(mongo.collection().find_one({'action': 'delete', 'object_repr': 'Friends'}))
+
+    def test_validation(self):
+        response = self.create(name='', year='1800', extra='без двоеточия')
+        self.assertEqual(response.status_code, 200)
+        errors = response.context['form'].errors
+        self.assertIn('name', errors)
+        self.assertIn('year', errors)
+        self.assertIn('extra', errors)
+        self.assertEqual(self.coll.count_documents({}), 0)
+        self.assertEqual(self.client.get(reverse('activity_log:series_edit', args=['nope'])).status_code, 404)
+
+
 class ActivityLogDisabledTest(TestCase):
     @override_settings(MONGO_URI='')
     def test_crm_works_and_page_explains_when_mongo_not_configured(self):

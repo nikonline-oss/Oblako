@@ -81,6 +81,13 @@ def _search_text(data):
 
 
 def log_event(action, instance, data=None, changes=None):
+    """Событие для объекта модели Django."""
+    meta = instance._meta
+    log_document_event(action, meta.label, str(meta.verbose_name), instance.pk, str(instance),
+                       data=data, changes=changes)
+
+
+def log_document_event(action, model, model_verbose, object_id, object_repr, data=None, changes=None):
     """Пишет событие в коллекцию activity. Ошибки MongoDB не ломают работу CRM."""
     request = current_request()
     user = None
@@ -91,14 +98,13 @@ def log_event(action, instance, data=None, changes=None):
         forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
         ip = forwarded.split(',')[0].strip() if forwarded else request.META.get('REMOTE_ADDR')
 
-    meta = instance._meta
     document = {
         'timestamp': timezone.now(),
         'action': action,
-        'model': meta.label,
-        'model_verbose': str(meta.verbose_name),
-        'object_id': instance.pk,
-        'object_repr': str(instance)[:300],
+        'model': model,
+        'model_verbose': model_verbose,
+        'object_id': object_id,
+        'object_repr': str(object_repr)[:300],
         'user': user,
         'ip': ip,
         'path': request.path if request is not None else None,

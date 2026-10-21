@@ -7,23 +7,31 @@
 | Файл | Что это |
 |---|---|
 | [ubuntu/Dockerfile](lab6_mongodb/ubuntu/Dockerfile) | шаг 1: ключ GPG, репозиторий `focal/mongodb-org/4.4`, `apt install mongodb-org` |
-| [docker-compose.yml](lab6_mongodb/docker-compose.yml) | сервер `mongo` (порт и том с данными) + сервис `script` для Python-скрипта |
+| сервис `mongo` в общем [docker-compose.yml](docker-compose.yml) | сервер MongoDB из этого образа, том `mongodata`; он же хранит данные CRM (журнал, сериалы) |
 | [shell_demo.js](lab6_mongodb/shell_demo.js) | CRUD в Mongo Shell над `SeriesDB.series` (команды из методички) |
 | [mongo_db_script.py](lab6_mongodb/mongo_db_script.py) | скрипт PyMongo: `insert_document`, `find_document`, `update_document`, `delete_document` |
-| [Dockerfile](lab6_mongodb/Dockerfile), [requirements.txt](lab6_mongodb/requirements.txt) | образ Python 3.12 с `pymongo==4.10.1` для запуска скрипта |
+| [Dockerfile](lab6_mongodb/Dockerfile), [requirements.txt](lab6_mongodb/requirements.txt) | образ Python 3.12 с `pymongo==4.10.1` для запуска скрипта (сервис `lab6-script`) |
+| [activity_log/](activity_log/) | MongoDB в CRM: CRUD сериалов, журнал действий, статистика (часть 3) |
 
 ## Запуск
 
+MongoDB запускается вместе со всем проектом:
+
 ```bash
-cd lab6_mongodb
-docker compose up -d --build --wait                     # шаги 1–2: установка и запуск MongoDB
-docker compose exec mongo mongo --eval 'db.runCommand({ connectionStatus: 1 })'
-docker compose exec mongo mongo /lab/shell_demo.js      # Mongo Shell
-docker compose run --rm script                          # PyMongo
-docker compose exec mongo mongo                         # интерактивная оболочка
+./project.sh up                                         # шаги 1–2: сборка образа по методичке и запуск
+./project.sh lab6                                       # connectionStatus + Mongo Shell + PyMongo подряд
+docker compose exec mongo mongo SeriesDB                # интерактивная оболочка
 ```
 
-Порт задаётся в `lab6_mongodb/.env` (по умолчанию `MONGO_PORT=27017`, `MONGO_BIND=127.0.0.1`), см. [.env.example](lab6_mongodb/.env.example).
+По отдельности:
+
+```bash
+docker compose exec mongo mongo --eval 'db.runCommand({ connectionStatus: 1 })'
+docker compose exec mongo mongo /lab/shell_demo.js      # Mongo Shell
+docker compose run --rm lab6-script                     # PyMongo
+```
+
+Наружу MongoDB порт не публикует. Для подключения извне (например, MongoDB Compass) в `.env` задаётся `COMPOSE_PROFILES=db-ports`, порт — `MONGO_PORT` (по умолчанию 27017, только `127.0.0.1`).
 
 ## Часть 1. Установка MongoDB в Ubuntu 20.04
 
@@ -139,9 +147,45 @@ None
 
 Скрипт можно запускать повторно: в начале он удаляет записи, оставшиеся от прошлого запуска.
 
-## Часть 3. MongoDB в CRM: журнал действий
+## Часть 3. MongoDB в CRM
 
-PyMongo используется не только в учебном скрипте, но и в самой CRM. Приложение [activity_log/](activity_log/) записывает в MongoDB каждое создание, изменение и удаление записей CRM: наряды, сотрудники, товары, организации, доверенности и т.д. Раздел **«Журнал»** в верхнем меню, адрес `/journal/`.
+PyMongo используется не только в учебном скрипте, но и в самой CRM: пункт **MongoDB** в верхнем меню. Там три вкладки: «Сериалы (CRUD)», «Журнал», «Статистика».
+
+### 3.1. Сериалы: создание, просмотр, редактирование, удаление
+
+Адрес `/journal/series/`. Это веб-интерфейс к той же коллекции `SeriesDB.series`, с которой работают Mongo Shell и скрипт из части 2: сериалы, добавленные скриптом, видны в CRM, и наоборот. Код — [activity_log/series.py](activity_log/series.py), функции названы как в методичке (`insert_document`, `find_document`, `update_document`, `delete_document`).
+
+| Действие | Что делает интерфейс | Операция MongoDB |
+|---|---|---|
+| Просмотр | таблица с поиском по названию, фильтром по жанру и годам, сортировкой; запрос показан на странице | `find({"name": {"$regex": …, "$options": "i"}, "genres": "драма", "year": {"$gte": …}}).sort(…)` |
+| Создание | форма «Добавить» | `insert_one(...)`, в сообщении — новый `_id` |
+| Редактирование | форма с текущими значениями и исходным документом | `update_one({_id}, {"$set": …, "$unset": …})` |
+| Удаление | кнопка 🗑 с подтверждением | `delete_one({_id})` |
+
+**Гибкая схема — главное отличие от SQL:**
+- обязательны только `name` и `year`;
+- пустые поля в документ не записываются;
+- жанры хранятся **массивом** (`["драма", "комедия"]`), и фильтр «жанр = драма» находит документ, если в массиве есть такой элемент;
+- «Дополнительные поля» в форме («страна: США», «серий: 236», «завершён: да») становятся полями документа с нужными типами (строка, число, логическое значение). У каждого сериала свой набор полей, и менять схему коллекции для этого не надо;
+- если при редактировании поле убрать, оно удаляется из документа через `$unset`.
+
+Пример документа после создания через форму:
+
+```
+{
+  "_id": ObjectId("…"),
+  "name": "Friends", "year": 1994,
+  "genres": ["комедия", "ситком"],
+  "seasons": 10, "rating": 8.9,
+  "страна": "США", "серий": 236, "завершён": true
+}
+```
+
+Создание, изменение и удаление сериалов тоже пишутся в журнал (раздел «Сериал (MongoDB)»), с «было → стало».
+
+### 3.2. Журнал действий
+
+Приложение [activity_log/](activity_log/) записывает в MongoDB каждое создание, изменение и удаление записей CRM: наряды, сотрудники, товары, организации, доверенности и т.д. Вкладка **«Журнал»**, адрес `/journal/`.
 
 **Почему здесь подходит именно NoSQL.** У событий нет общей схемы: у наряда 8 полей, у единицы измерения одно, у изменения вместо данных — пары «было → стало». В PostgreSQL для этого понадобилась бы таблица с JSON-полем или по таблице на каждую модель. В MongoDB это просто документы в одной коллекции `activity`:
 
@@ -171,7 +215,7 @@ PyMongo используется не только в учебном скрип�
 | Статистика | 4 конвейера `aggregate()`: `$group` по разделам и действиям, `$dateToString` по дням, топ-10 объектов. Плюс `collStats` и список индексов, а сами pipeline показаны на странице |
 | Надёжность | таймаут подключения 2 с; если MongoDB недоступна, CRM сохраняет записи как обычно, в лог пишется предупреждение, а страница журнала объясняет, что случилось |
 
-MongoDB запускается в [docker-compose.yml](docker-compose.yml) CRM сервисом `mongo` (`mongo:4.4`, том `mongodata`). Наружу порт **не публикуется**, к нему ходит только `web` по внутренней сети, так что лишний порт на сервере не нужен. Консоль:
+CRM использует ту же MongoDB, что собрана по методичке (сервис `mongo` в общем [docker-compose.yml](docker-compose.yml), том `mongodata`): журнал — в БД `crm`, сериалы — в `SeriesDB`. Наружу порт **не публикуется**, к нему ходит только `web` по внутренней сети, так что лишний порт на сервере не нужен. Консоль:
 
 ```bash
 docker compose exec mongo mongo crm --eval 'db.activity.find().sort({timestamp: -1}).limit(3).forEach(printjson)'
@@ -179,18 +223,22 @@ docker compose exec mongo mongo crm --eval 'db.activity.find().sort({timestamp: 
 
 На Render своей MongoDB нет: журнал там выключен, пока не задан `MONGO_URI`. Можно взять бесплатный кластер MongoDB Atlas (M0) и вписать его строку подключения в переменную `MONGO_URI` в Dashboard.
 
-**Проверка:**
-- 8 автотестов ([activity_log/tests.py](activity_log/tests.py)) на настоящей MongoDB в отдельной тестовой БД: создание, изменение и удаление, внешние ключи, Decimal и даты, пользователь и IP, фильтры, полнотекстовый поиск, карточка события, агрегации, работа CRM без MongoDB и при её падении.
-- Вживую через интерфейс CRM: единица измерения создана, изменена и удалена — в журнале 3 события с IP, карточка показывает «Название: Тестовая единица → Тестовая единица (изм.)», в `mongo` shell те же документы.
+### 3.3. Проверка
+
+- **13 автотестов** ([activity_log/tests.py](activity_log/tests.py)) на настоящей MongoDB в отдельных тестовых БД:
+  - журнал: создание, изменение и удаление, внешние ключи, Decimal и даты, пользователь и IP, фильтры, полнотекстовый поиск, карточка события, агрегации, работа CRM без MongoDB и при её падении;
+  - сериалы: создание гибкого документа (массив жанров, доп. поля с типами, пустые поля не сохраняются), поиск, фильтр по жанру и годам, сортировка, редактирование с `$set`/`$unset`, удаление только через POST, проверка формы.
+- **Вживую через интерфейс CRM:**
+  - сериал «Тестовый сериал» создан с жанрами и доп. полями «страна: Россия», «серий: 16»;
+  - отредактирован: новое название, удалены поле «серий» и число сезонов;
+  - найден поиском «тестовый» без учёта регистра;
+  - удалён;
+  - в журнале — 3 события с одним `_id`.
+- **Журнал при изменении записей CRM:** единица измерения создана, изменена и удалена — в журнале 3 события с IP, карточка показывает «Название: Тестовая единица → Тестовая единица (изм.)», в `mongo` shell те же документы.
 
 ## Развёртывание на сервере
 
-```bash
-cp lab6_mongodb/.env.example lab6_mongodb/.env.server   # вписать выданный порт: MONGO_PORT=...
-./deploy/deploy.sh user@server --stack lab6_mongodb
-```
-
-Проверено на тестовом сервере с `MONGO_PORT=27018`: `deploy.sh` проверил порт, собрал образ, контейнер стал `healthy`. `shell_demo.js` и `mongo_db_script.py` на сервере выполнились. Подробнее — [DEPLOY.md](DEPLOY.md).
+MongoDB входит в общий проект и выкладывается вместе с ним (`./deploy/deploy.sh user@server`, см. [DEPLOY.md](DEPLOY.md)). Отдельный порт для неё не нужен. Демонстрация на сервере: `./project.sh lab6` и раздел «MongoDB» в CRM.
 
 ## Выводы
 

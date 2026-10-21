@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h4>{{ title }}</h4>
+{% include 'activity_log/_nav.html' %}
+
+<form method="post" class="card-panel white">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="red-text">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="row" style="margin-bottom:0;">
+    {% for field in form %}
+      <div class="col s12 {% if field.name == 'name' or field.name == 'genres' %}m6{% elif field.name == 'description' or field.name == 'extra' %}m12{% else %}m2{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+        {{ field }}
+        {% if field.help_text %}<small class="grey-text">{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<div class="red-text">{{ error }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  <button class="btn green" type="submit"><i class="material-icons left">save</i>Сохранить</button>
+  <a href="{% url 'activity_log:series' %}" class="btn-flat">Отмена</a>
+</form>
+
+{% if doc_json %}
+<div class="card"><div class="card-content">
+  <span class="card-title">Документ в MongoDB сейчас</span>
+  <pre style="white-space:pre-wrap; background:#f5f5f5; padding:12px;">{{ doc_json }}</pre>
+  <a href="{% url 'activity_log:journal' %}?model=SeriesDB.series&object_id={{ series_id }}">История изменений в журнале</a>
+</div></div>
+{% endif %}
+{% endblock %}

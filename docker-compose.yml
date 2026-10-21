@@ -1,17 +1,31 @@
-# Все порты и пароли — в .env (см. .env.example).
-# Проверить, что порты на машине свободны: ./deploy/ports.sh
+# Весь проект одним файлом: CRM (ЛР2, ЛР4–ЛР6) + MongoDB (ЛР6) + WordPress (ЛР7).
+# Все порты и пароли — в .env (см. .env.example). Запуск всего: ./project.sh up
+# Swarm-ферма ЛР3 запускается отдельно: ./project.sh swarm up
+name: crm
+
+x-wp-db-env: &wp-db-env
+  WORDPRESS_DB_HOST: wp-db
+  WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wptest}
+  WORDPRESS_DB_USER: ${MYSQL_USER:-wp}
+  WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-wp_password}
+  # Адрес сайта = PUBLIC_HOST + WP_PORT (или явно WP_URL) — сайт работает на любом порту/сервере
+  WP_URL: ${WP_URL:-http://${PUBLIC_HOST:-localhost}:${WP_PORT:-8081}}
+  WORDPRESS_CONFIG_EXTRA: |
+    define('WP_HOME', getenv_docker('WP_URL', 'http://localhost:8081'));
+    define('WP_SITEURL', getenv_docker('WP_URL', 'http://localhost:8081'));
+
 services:
+  # ======================= CRM (ЛР2, ЛР4, ЛР5, ЛР6) =======================
   db:
     image: postgres:17-alpine
     restart: unless-stopped
-    env_file: .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # По умолчанию БД доступна только с самой машины (DB_BIND=127.0.0.1)
-    ports:
-      - "${DB_BIND:-127.0.0.1}:${DB_PORT:-5432}:5432"
-    networks:
-      - crm-net
+    networks: [crm-net]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -22,12 +36,25 @@ services:
     build: .
     image: crm-web
     restart: unless-stopped
-    env_file: .env
     environment:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PORT: ${APP_PORT:-8000}
+      PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?задайте DJANGO_SECRET_KEY в .env}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+      LOAD_INITIAL_DATA: ${LOAD_INITIAL_DATA:-1}
       MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: ${MONGO_DB:-crm}
+      DROPBOX_APP_KEY: ${DROPBOX_APP_KEY:-}
+      DROPBOX_APP_SECRET: ${DROPBOX_APP_SECRET:-}
+      DROPBOX_REFRESH_TOKEN: ${DROPBOX_REFRESH_TOKEN:-}
+      DROPBOX_ACCESS_TOKEN: ${DROPBOX_ACCESS_TOKEN:-}
     ports:
       - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8000}:${APP_PORT:-8000}"
     depends_on:
@@ -36,8 +63,7 @@ services:
       # Журнал не обязателен для работы CRM — ждём только запуска, не готовности
       mongo:
         condition: service_started
-    networks:
-      - crm-net
+    networks: [crm-net]
     # gunicorn слушает порт только после migrate/collectstatic — значит, контейнер готов
     healthcheck:
       test: ["CMD", "python", "-c", "import os, socket; socket.create_connection(('localhost', int(os.environ['PORT'])), 2)"]
@@ -46,24 +72,133 @@ services:
       retries: 30
       start_period: 10s
 
-  # MongoDB для журнала действий (ЛР6). Порт наружу не публикуется — к ней ходит
-  # только web по сети crm-net. Консоль: docker compose exec mongo mongo crm
+  # ======================= MongoDB (ЛР6) =======================
+  # MongoDB 4.4, установленная по шагам методички ЛР6 на Ubuntu 20.04.
+  # Используется и журналом действий CRM (БД crm), и демонстрацией ЛР6 (БД SeriesDB).
   mongo:
-    image: mongo:4.4
+    build: ./lab6_mongodb/ubuntu
+    image: crm-mongo
     restart: unless-stopped
     volumes:
       - mongodata:/data/db
-    networks:
-      - crm-net
+      - ./lab6_mongodb:/lab:ro
+    networks: [crm-net]
     healthcheck:
       test: ["CMD", "mongo", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
       interval: 5s
       timeout: 5s
       retries: 20
 
+  # Скрипт PyMongo из ЛР6: ./project.sh lab6  (или docker compose run --rm lab6-script)
+  lab6-script:
+    build: ./lab6_mongodb
+    image: crm-lab6-script
+    profiles: ["tools"]
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+    networks: [crm-net]
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # ======================= WordPress (ЛР7) =======================
+  wp-db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wptest}
+      MYSQL_USER: ${MYSQL_USER:-wp}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?задайте MYSQL_PASSWORD в .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?задайте MYSQL_ROOT_PASSWORD в .env}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - wp-dbdata:/var/lib/mysql
+    networks: [wp-net]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    restart: unless-stopped
+    environment: *wp-db-env
+    ports:
+      - "${WP_BIND:-0.0.0.0}:${WP_PORT:-8081}:80"
+    volumes:
+      - wpdata:/var/www/html
+    depends_on:
+      wp-db:
+        condition: service_healthy
+    networks: [wp-net]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /var/www/html/wp-config.php"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    restart: unless-stopped
+    environment:
+      PMA_HOST: wp-db
+    ports:
+      - "${PMA_BIND:-127.0.0.1}:${PMA_PORT:-8082}:80"
+    depends_on:
+      wp-db:
+        condition: service_healthy
+    networks: [wp-net]
+
+  # WP-CLI: установка и наполнение сайта (lab7_wordpress/setup/seed.sh), ./project.sh up делает это сам
+  wp-cli:
+    image: wordpress:cli-php8.3
+    profiles: ["tools"]
+    user: "33:33"   # www-data образа wordpress — владелец файлов сайта
+    environment:
+      <<: *wp-db-env
+      HOME: /tmp
+      WP_ADMIN_USER: ${WP_ADMIN_USER:-admin}
+      WP_ADMIN_PASSWORD: ${WP_ADMIN_PASSWORD:-}
+      WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL:-admin@example.com}
+      WP_TITLE: ${WP_TITLE:-Сайт студента}
+      MAP_LL: ${MAP_LL:-37.617635,55.755814}
+    volumes:
+      - wpdata:/var/www/html
+      - ./lab7_wordpress/setup:/setup:ro
+    networks: [wp-net]
+    depends_on:
+      wordpress:
+        condition: service_healthy
+
+  # ============ Необязательно: прямой доступ к БД снаружи ============
+  # Включается в .env: COMPOSE_PROFILES=db-ports (займёт ещё 2 порта: DB_PORT и MONGO_PORT)
+  pg-port:
+    image: alpine/socat
+    profiles: ["db-ports"]
+    restart: unless-stopped
+    command: TCP-LISTEN:5432,fork,reuseaddr TCP:db:5432
+    ports:
+      - "${DB_BIND:-127.0.0.1}:${DB_PORT:-5432}:5432"
+    networks: [crm-net]
+    depends_on: [db]
+
+  mongo-port:
+    image: alpine/socat
+    profiles: ["db-ports"]
+    restart: unless-stopped
+    command: TCP-LISTEN:27017,fork,reuseaddr TCP:mongo:27017
+    ports:
+      - "${MONGO_BIND:-127.0.0.1}:${MONGO_PORT:-27017}:27017"
+    networks: [crm-net]
+    depends_on: [mongo]
+
 volumes:
   pgdata:
   mongodata:
+  wp-dbdata:
+  wpdata:
 
 networks:
   crm-net:
+  wp-net:

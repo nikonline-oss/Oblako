@@ -1,14 +1,24 @@
 #!/usr/bin/env bash
-# Проверяет, что порты, которые займёт docker compose, свободны на этой машине.
-# Порты берутся из `docker compose config`, т.е. уже с учётом .env каталога.
+# Проверяет, что порты, которые займёт проект, свободны на этой машине.
+# Порты берутся из `docker compose config`, т.е. уже с учётом .env и COMPOSE_PROFILES.
 # Ничего не меняет: при конфликте выводит занятые порты и выходит с кодом 1.
 # Порт считается своим (не конфликтом), если его уже держит этот же compose-проект.
 #
-#   ./deploy/ports.sh                    — CRM (корень проекта)
-#   ./deploy/ports.sh lab7_wordpress     — другой каталог с docker-compose.yml
-#                                          (путь относительно текущего каталога)
+#   ./deploy/ports.sh                                   — порты docker-compose.yml
+#   ./deploy/ports.sh --also swarm=80 --also registry=5000   — плюс дополнительные
+#   ./deploy/ports.sh --no-compose --also swarm=80      — только дополнительные
 set -euo pipefail
-cd "${1:-$(dirname "$0")/..}"
+cd "$(dirname "$0")/.."
+
+EXTRA=""
+USE_COMPOSE=1
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --also) EXTRA="$EXTRA${2%%=*} ${2#*=}"$'\n'; shift 2 ;;
+    --no-compose) USE_COMPOSE=0; shift ;;
+    *) echo "Неизвестный аргумент: $1"; exit 2 ;;
+  esac
+done
 
 # "сервис порт" для всех опубликованных портов
 published() {
@@ -28,10 +38,16 @@ listening() {
 }
 own_ports() { docker compose ps --format '{{.Ports}}' 2>/dev/null | grep -oE '[0-9]+->' | tr -d '>-' || true; }
 
-PORTS=$(published)
-[ -n "$PORTS" ] || { echo "Не удалось прочитать порты из docker compose config в $(pwd)"; exit 1; }
+PORTS=""
+if [ $USE_COMPOSE = 1 ]; then
+  PORTS=$(published)
+  [ -n "$PORTS" ] || { echo "Не удалось прочитать порты из docker compose config (есть ли .env?)"; exit 1; }
+  OWN=$(own_ports | sort -un)
+else
+  OWN=""
+fi
+PORTS=$(printf '%s\n%s' "$PORTS" "$EXTRA" | sed '/^$/d')
 BUSY=$(listening | sort -un)
-OWN=$(own_ports | sort -un)
 in_list() { printf '%s\n' $2 | grep -qx "$1"; }
 
 conflicts=0
@@ -47,6 +63,6 @@ while read -r svc port; do
 done <<< "$PORTS"
 
 if [ $conflicts -gt 0 ]; then
-  echo "Есть занятые порты — впишите в $(pwd)/.env порты, выделенные вам на сервере."
+  echo "Есть занятые порты — впишите в .env порты, выделенные вам на сервере."
   exit 1
 fi

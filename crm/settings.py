@@ -32,6 +32,9 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Адрес, по которому открывают сайт (IP/домен сервера), разрешён автоматически
+if os.environ.get('PUBLIC_HOST') and os.environ['PUBLIC_HOST'] not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(os.environ['PUBLIC_HOST'])
 
 # Нужен, если сайт открывают по https или через прокси: http://1.2.3.4:8080,https://crm.example.com
 CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o]
@@ -133,6 +136,8 @@ else:
 # MongoDB для журнала действий (ЛР6). Пустой MONGO_URI — журнал выключен, CRM работает.
 MONGO_URI = os.environ.get('MONGO_URI', '')
 MONGO_DB = os.environ.get('MONGO_DB', 'crm')
+# БД из методички ЛР6 (коллекция series) — раздел «Сериалы» с CRUD
+MONGO_SERIES_DB = os.environ.get('MONGO_SERIES_DB', 'SeriesDB')
 
 
 # Password validation

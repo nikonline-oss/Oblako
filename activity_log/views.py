@@ -5,12 +5,16 @@ from urllib.parse import urlencode
 from bson import ObjectId, json_util
 from bson.errors import InvalidId
 from django.conf import settings
+from django.contrib import messages
 from django.http import Http404
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from pymongo import DESCENDING
 from pymongo.errors import PyMongoError
 
+from . import series
+from .forms import SeriesForm
 from .mongo import COLLECTION, collection, enabled
 
 PAGE_SIZE = 50
@@ -176,3 +180,84 @@ def stats(request):
         'server_version': coll.database.client.server_info()['version'],
         'db_name': coll.database.name,
     })
+
+
+# ======================= Сериалы: CRUD над SeriesDB.series =======================
+
+def _int_or_none(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+@mongo_view
+def series_list(request):
+    params = request.GET
+    query = series.build_query(
+        q=params.get('q', '').strip(),
+        genre=params.get('genre', ''),
+        year_from=_int_or_none(params.get('year_from')),
+        year_to=_int_or_none(params.get('year_to')),
+    )
+    sort_key = params.get('sort') if params.get('sort') in series.SORTS else 'name'
+    sort = series.SORTS[sort_key]
+    docs = series.find_document(series.series_collection(), query, multiple=True, sort=sort)
+    rows = [{
+        'id': str(d['_id']),
+        'doc': d,
+        'extra': series.extra_fields(d),
+    } for d in docs]
+    return render(request, 'activity_log/series_list.html', {
+        'page_title': 'MongoDB',
+        'rows': rows,
+        'total': series.series_collection().count_documents({}),
+        'genres': series.all_genres(),
+        'f': params,
+        'sort': sort_key,
+        'db_name': settings.MONGO_SERIES_DB,
+        'query_json': json_util.dumps(query, ensure_ascii=False),
+        'sort_json': json_util.dumps(dict(sort), ensure_ascii=False),
+    })
+
+
+@mongo_view
+def series_create(request):
+    form = SeriesForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        doc = form.to_document()
+        new_id = series.create(doc)
+        messages.success(request, f'Добавлен «{doc["name"]}» — insert_one, _id: {new_id}')
+        return redirect('activity_log:series')
+    return render(request, 'activity_log/series_form.html', {
+        'page_title': 'MongoDB', 'form': form, 'title': 'Новый сериал',
+    })
+
+
+@mongo_view
+def series_edit(request, series_id):
+    doc = series.get(series_id)
+    if doc is None:
+        raise Http404('Документ не найден')
+    form = SeriesForm(request.POST) if request.method == 'POST' else SeriesForm.from_document(doc)
+    if request.method == 'POST' and form.is_valid():
+        new_doc = form.to_document()
+        series.update(series_id, new_doc)
+        messages.success(request, f'Сохранён «{new_doc["name"]}» — update_one с $set/$unset')
+        return redirect('activity_log:series')
+    return render(request, 'activity_log/series_form.html', {
+        'page_title': 'MongoDB', 'form': form, 'title': f'Редактирование: {doc.get("name")}',
+        'doc_json': json_util.dumps(doc, indent=2, ensure_ascii=False),
+        'series_id': series_id,
+    })
+
+
+@require_POST
+@mongo_view
+def series_delete(request, series_id):
+    doc = series.get(series_id)
+    if doc is None:
+        raise Http404('Документ не найден')
+    series.delete(series_id)
+    messages.success(request, f'Удалён «{doc.get("name")}» — delete_one')
+    return redirect('activity_log:series')

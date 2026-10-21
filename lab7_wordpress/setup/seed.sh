@@ -34,7 +34,7 @@ log "Русский язык"
 retry wp language core install ru_RU --activate
 
 if [ "$(wp option get lab7_seeded 2>/dev/null || true)" = "1" ]; then
-  log "Сайт уже наполнен — пропускаю (чтобы наполнить заново: ./setup.sh reset)"
+  log "Сайт уже наполнен — пропускаю (чтобы собрать сайт заново: ./project.sh wp-reset)"
   exit 0
 fi
 

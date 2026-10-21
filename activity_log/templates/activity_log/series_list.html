@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Сериалы (MongoDB){% endblock %}
+{% block content %}
+<h4>Сериалы <small class="grey-text">— коллекция {{ db_name }}.series</small></h4>
+{% include 'activity_log/_nav.html' %}
+
+<div class="right-align" style="margin-bottom:12px;">
+  <a href="{% url 'activity_log:series_create' %}" class="btn blue"><i class="material-icons left">add</i>Добавить</a>
+</div>
+
+<form method="get" class="card-panel white">
+  <div class="row" style="margin-bottom:0;">
+    <div class="col s12 m4"><label>Название содержит</label><input type="text" name="q" value="{{ f.q }}" placeholder="например: friends"></div>
+    <div class="col s12 m2">
+      <label>Жанр</label>
+      <select name="genre" class="browser-default">
+        <option value="">Любой</option>
+        {% for g in genres %}<option value="{{ g }}" {% if f.genre == g %}selected{% endif %}>{{ g }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col s6 m1"><label>Год с</label><input type="number" name="year_from" value="{{ f.year_from }}"></div>
+    <div class="col s6 m1"><label>по</label><input type="number" name="year_to" value="{{ f.year_to }}"></div>
+    <div class="col s12 m2">
+      <label>Сортировка</label>
+      <select name="sort" class="browser-default">
+        <option value="name" {% if sort == 'name' %}selected{% endif %}>по названию</option>
+        <option value="-year" {% if sort == '-year' %}selected{% endif %}>сначала новые</option>
+        <option value="year" {% if sort == 'year' %}selected{% endif %}>сначала старые</option>
+        <option value="-rating" {% if sort == '-rating' %}selected{% endif %}>по рейтингу</option>
+      </select>
+    </div>
+    <div class="col s12 m2" style="padding-top:20px;">
+      <button class="btn blue" type="submit"><i class="material-icons">search</i></button>
+      <a href="{% url 'activity_log:series' %}" class="btn-flat">Сброс</a>
+    </div>
+  </div>
+  <small class="grey-text">Запрос: <code>db.series.find({{ query_json }}).sort({{ sort_json }})</code></small>
+</form>
+
+<p>Показано: <b>{{ rows|length }}</b> из {{ total }}</p>
+<table class="highlight">
+  <thead><tr><th>Название</th><th>Год</th><th>Жанры</th><th>Сезонов</th><th>Рейтинг</th><th>Доп. поля</th><th style="width:120px;"></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><b>{{ r.doc.name }}</b>{% if r.doc.description %}<br><small class="grey-text">{{ r.doc.description|truncatechars:80 }}</small>{% endif %}</td>
+      <td>{{ r.doc.year|default:"—" }}</td>
+      <td>{% for g in r.doc.genres %}<span class="chip" style="font-size:12px;">{{ g }}</span>{% empty %}—{% endfor %}</td>
+      <td>{{ r.doc.seasons|default:"—" }}</td>
+      <td>{{ r.doc.rating|default:"—" }}</td>
+      <td>{% for k, v in r.extra.items %}<span class="chip" style="font-size:12px;">{{ k }}: {{ v }}</span>{% empty %}—{% endfor %}</td>
+      <td>
+        <a href="{% url 'activity_log:series_edit' r.id %}" class="btn-small orange" title="Редактировать"><i class="material-icons">edit</i></a>
+        <form action="{% url 'activity_log:series_delete' r.id %}" method="post" style="display:inline;" onsubmit="return confirm('Удалить «{{ r.doc.name|escapejs }}»?');">{% csrf_token %}
+          <button class="btn-small red" title="Удалить"><i class="material-icons">delete</i></button>
+        </form>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7" class="grey-text">Ничего не найдено. Добавьте сериал кнопкой «Добавить».</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

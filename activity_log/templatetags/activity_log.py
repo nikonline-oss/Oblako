@@ -20,6 +20,10 @@ def show_value(value):
 @register.filter
 def field_label(name, model_label):
     """Человеческое название поля по имени модели 'app.Model'."""
+    if model_label == 'SeriesDB.series':
+        from ..forms import SeriesForm
+        field = SeriesForm.base_fields.get(name)
+        return field.label if field else name
     try:
         return apps.get_model(model_label)._meta.get_field(name).verbose_name
     except (LookupError, ValueError, FieldDoesNotExist):
