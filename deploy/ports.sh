@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
-# Проверяет, что порты из .env (WEB_PORT, DB_PORT) свободны на этой машине.
-# Ничего не меняет: при конфликте выводит, какой порт занят, и выходит с кодом 1.
-# Порт считается своим (не конфликтом), если его уже держит этот же docker compose проект.
+# Проверяет, что порты, которые займёт docker compose, свободны на этой машине.
+# Порты берутся из `docker compose config`, т.е. уже с учётом .env каталога.
+# Ничего не меняет: при конфликте выводит занятые порты и выходит с кодом 1.
+# Порт считается своим (не конфликтом), если его уже держит этот же compose-проект.
 #
-#   ./deploy/ports.sh
+#   ./deploy/ports.sh                    — CRM (корень проекта)
+#   ./deploy/ports.sh lab7_wordpress     — другой каталог с docker-compose.yml
+#                                          (путь относительно текущего каталога)
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "${1:-$(dirname "$0")/..}"
 
-ENV=.env
-[ -f "$ENV" ] || { echo "Нет файла $ENV (скопируйте .env.example)"; exit 1; }
-
-# Переменная и её значение по умолчанию (как в docker-compose.yml)
-PORT_VARS="WEB_PORT:8000 DB_PORT:5432"
-
-get_env() { grep -E "^$1=" "$ENV" | tail -1 | cut -d= -f2- | tr -d '\r ' || true; }
+# "сервис порт" для всех опубликованных портов
+published() {
+  docker compose config 2>/dev/null | awk '
+    /^services:/ { s = 1; next }
+    /^[a-z]/     { s = 0 }
+    s && /^  [^ ].*:$/ { svc = $1; sub(":", "", svc) }
+    s && /published:/  { gsub(/[^0-9]/, "", $2); print svc, $2 }'
+}
 
 # Слушаемые порты (ss / netstat Linux и Windows) + опубликованные Docker-ом
 listening() {
@@ -24,26 +28,25 @@ listening() {
 }
 own_ports() { docker compose ps --format '{{.Ports}}' 2>/dev/null | grep -oE '[0-9]+->' | tr -d '>-' || true; }
 
+PORTS=$(published)
+[ -n "$PORTS" ] || { echo "Не удалось прочитать порты из docker compose config в $(pwd)"; exit 1; }
 BUSY=$(listening | sort -un)
 OWN=$(own_ports | sort -un)
 in_list() { printf '%s\n' $2 | grep -qx "$1"; }
 
 conflicts=0
-for pair in $PORT_VARS; do
-  var=${pair%%:*}
-  port=$(get_env "$var")
-  port=${port:-${pair##*:}}
+while read -r svc port; do
   if in_list "$port" "$OWN"; then
-    echo "  $var=$port — уже используется этим проектом"
+    echo "  $port ($svc) — уже используется этим проектом"
   elif in_list "$port" "$BUSY"; then
-    echo "  $var=$port — ЗАНЯТ другим процессом"
+    echo "  $port ($svc) — ЗАНЯТ другим процессом"
     conflicts=$((conflicts + 1))
   else
-    echo "  $var=$port — свободен"
+    echo "  $port ($svc) — свободен"
   fi
-done
+done <<< "$PORTS"
 
 if [ $conflicts -gt 0 ]; then
-  echo "Есть занятые порты — впишите в $ENV порты, выделенные вам на сервере."
+  echo "Есть занятые порты — впишите в $(pwd)/.env порты, выделенные вам на сервере."
   exit 1
 fi

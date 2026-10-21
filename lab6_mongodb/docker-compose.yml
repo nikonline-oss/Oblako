@@ -1,0 +1,31 @@
+# ЛР6: MongoDB 4.4 (установлена по методичке на Ubuntu 20.04) + скрипт на PyMongo.
+# Порт и интерфейс — в .env (см. .env.example).
+services:
+  mongo:
+    build: ./ubuntu
+    image: lab6-mongo-ubuntu
+    restart: unless-stopped
+    ports:
+      - "${MONGO_BIND:-127.0.0.1}:${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodata:/data/db
+      - ./:/lab:ro
+    healthcheck:
+      test: ["CMD", "mongo", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Python-скрипт из второй части методички: docker compose run --rm script
+  script:
+    build: .
+    image: lab6-pymongo-script
+    profiles: ["tools"]
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongodata:

@@ -20,6 +20,7 @@ CRM запускается на сервере двумя контейнерам
 | Порт SSH, если не 22 | `2222` | `SSH_PORT` |
 | **Порт для сайта** | `18080` | `WEB_PORT` |
 | **Порт для БД** | `15432` | `DB_PORT` |
+| Ещё порты, если на сервере нужны ЛР6/ЛР7 | 1 для MongoDB, 2 для WordPress | см. п. 7б |
 | Есть ли на сервере Docker и права на него | `docker ps` работает без `sudo` | — |
 
 Если БД снаружи не нужна, порт для неё всё равно нужен: он открыт только на `127.0.0.1` сервера, но на сервере не должен быть занят (там часто уже работает свой PostgreSQL на 5432).
@@ -201,6 +202,11 @@ cd ~/crm && git pull && docker compose up -d --build --wait
 | `DB_BIND` | интерфейс БД (`127.0.0.1` — только с самого сервера) | 127.0.0.1 |
 | `APP_PORT` | порт gunicorn внутри контейнера, менять не нужно | 8000 |
 | `SWARM_HTTP_PORT`, `REGISTRY_PORT` | порты Swarm-фермы ЛР3 (см. п. 7) | 80, 5000 |
+| `MONGO_PORT`, `MONGO_BIND` (`lab6_mongodb/.env`) | MongoDB ЛР6 (см. п. 7б) | 27017, 127.0.0.1 |
+| `WP_PORT`, `WP_URL` (`lab7_wordpress/.env`) | сайт WordPress ЛР7 | 8081 |
+| `PMA_PORT`, `PMA_BIND` (`lab7_wordpress/.env`) | phpMyAdmin ЛР7 | 8082, 127.0.0.1 |
+
+Проверить порты любой лабы на машине: `./deploy/ports.sh` (CRM), `./deploy/ports.sh lab6_mongodb`, `./deploy/ports.sh lab7_wordpress`.
 
 `DJANGO_ALLOWED_HOSTS` указывается **без порта**: порт можно менять, не трогая его.
 
@@ -244,6 +250,63 @@ SWARM_HTTP_PORT=18081 REGISTRY_PORT=15000 ./swarm/cluster.sh up
 ```
 
 Ферма запускает 4 контейнера `docker:dind` в режиме `--privileged`. На общем сервере это может быть запрещено, тогда показывайте ЛР3 на ноутбуке.
+
+---
+
+## 7б. ЛР6 (MongoDB) и ЛР7 (WordPress) на сервере
+
+Тот же `deploy.sh` с опцией `--stack`. Настройки каждой лабы лежат в её каталоге: `<лаба>/.env.server` на компьютере копируется в `<лаба>/.env` на сервере.
+
+**ЛР6 — нужен 1 порт** (MongoDB):
+
+```bash
+cp lab6_mongodb/.env.example lab6_mongodb/.env.server     # MONGO_PORT=выданный порт
+./deploy/deploy.sh student05@192.168.10.5 --stack lab6_mongodb
+
+# демонстрация на сервере
+ssh student05@192.168.10.5
+cd ~/crm/lab6_mongodb
+docker compose exec mongo mongo /lab/shell_demo.js
+docker compose run --rm script
+```
+
+`MONGO_BIND=127.0.0.1` (по умолчанию) — к базе можно подключиться только с самого сервера; `0.0.0.0` — откуда угодно (без пароля, только на время сдачи).
+
+**ЛР7 — нужно 2 порта** (сайт и phpMyAdmin):
+
+```bash
+cp lab7_wordpress/.env.example lab7_wordpress/.env.server
+```
+
+В `lab7_wordpress/.env.server`:
+
+```ini
+WP_PORT=18081
+WP_URL=http://192.168.10.5:18081      # адрес сайта = адрес сервера + WP_PORT
+PMA_PORT=18082
+PMA_BIND=0.0.0.0                      # чтобы открыть phpMyAdmin с компьютера (иначе только с сервера)
+MAP_LL=долгота,широта                 # точка на Яндекс.Карте
+```
+
+Пароли (`MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `WP_ADMIN_PASSWORD`) можно оставить пустыми: сервер сгенерирует их при первом деплое, а при следующих деплоях они сохранятся.
+
+```bash
+./deploy/deploy.sh student05@192.168.10.5 --stack lab7_wordpress
+ssh student05@192.168.10.5 "grep -E '^WP_ADMIN_(USER|PASSWORD)=' crm/lab7_wordpress/.env"   # вход в /wp-admin/
+```
+
+Скрипт установит WordPress, тему и плагины и наполнит сайт так же, как на ноутбуке.
+
+Сменить порт или адрес сайта потом:
+
+```bash
+ssh student05@192.168.10.5
+cd ~/crm/lab7_wordpress
+sed -i 's/^WP_PORT=.*/WP_PORT=18085/' .env
+./setup.sh url http://192.168.10.5:18085
+```
+
+Все три проекта (CRM, ЛР6, ЛР7) могут работать на одном сервере одновременно, каждый на своих портах.
 
 ---
 
